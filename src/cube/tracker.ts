@@ -92,6 +92,7 @@ export class CubeTracker {
   private orient = identityOrientation();
   private rotations: string[] = [];
   private facelets = SOLVED;
+  private origin = SOLVED;
 
   constructor(options: TrackerOptions = {}) {
     this.pairWindowMs = options.pairWindowMs ?? 120;
@@ -132,7 +133,13 @@ export class CubeTracker {
     return this.rotations.join(' ');
   }
 
-  reset(): void {
+  /**
+   * Start again from a known cube. Pass the cube's own facelets to adopt the state it is really
+   * in; with nothing passed the cube is taken to be solved. Either way you are taken to be
+   * holding it white top, green front.
+   */
+  reset(origin: string = SOLVED): void {
+    this.origin = origin;
     this.groups = [];
     this.buffer = [];
     this.rebuild();
@@ -214,7 +221,7 @@ export class CubeTracker {
     this.log = [];
     this.orient = identityOrientation();
     this.rotations = [];
-    this.facelets = SOLVED;
+    this.facelets = this.origin;
     for (const group of this.groups) this.append(group);
   }
 

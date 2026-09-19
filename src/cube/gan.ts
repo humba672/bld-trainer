@@ -1,0 +1,152 @@
+/**
+ * The Bluetooth link to the cube, wrapped so the rest of the site only ever sees plain turns.
+ *
+ * gan-web-bluetooth picks a protocol driver by which BLE service the cube exposes; it does not
+ * tell you which one it picked, so the generation is read back off the device here.
+ */
+
+import { connectGanCube, type GanCubeConnection, type GanCubeEvent } from 'gan-web-bluetooth';
+import type { Face, WireTurn } from './tracker';
+
+export type Generation = 'Gen2' | 'Gen3' | 'Gen4' | 'unknown';
+
+const GENERATION_SERVICES: Array<[string, Generation]> = [
+  ['6e400001-b5a3-f393-e0a9-e50e24dc4179', 'Gen2'],
+  ['8653000a-43e6-47b7-9cb0-5fc21d4ae340', 'Gen3'],
+  ['00000010-0000-fff7-fff6-fff5fff4fff0', 'Gen4'],
+];
+
+/** The cube numbers its faces U R F D L B. */
+const WIRE_FACES: Face[] = ['U', 'R', 'F', 'D', 'L', 'B'];
+
+export interface CubeInfo {
+  deviceName: string;
+  deviceMAC: string;
+  generation: Generation;
+  hardwareName?: string;
+  softwareVersion?: string;
+  hardwareVersion?: string;
+  productDate?: string;
+  gyroSupported?: boolean;
+  gyroSeen?: boolean;
+  battery?: number;
+}
+
+export type MacProvider = (device: BluetoothDevice, isFallback?: boolean) => Promise<string | null>;
+
+export interface CubeLinkHandlers {
+  onTurn(turn: WireTurn, raw: string): void;
+  onInfo(info: Partial<CubeInfo>): void;
+  onFacelets(facelets: string, serial: number): void;
+  onDisconnect(): void;
+  onNote(text: string): void;
+}
+
+export const bluetoothAvailable = (): boolean =>
+  typeof navigator !== 'undefined' && !!(navigator as Navigator).bluetooth;
+
+export class CubeLink {
+  private connection: GanCubeConnection | null = null;
+  private subscription: { unsubscribe(): void } | null = null;
+
+  constructor(private handlers: CubeLinkHandlers) {}
+
+  get connected(): boolean {
+    return this.connection !== null;
+  }
+
+  async connect(macProvider: MacProvider): Promise<CubeInfo> {
+    const connection = await connectGanCube(macProvider);
+    this.connection = connection;
+    this.subscription = connection.events$.subscribe((event: GanCubeEvent) =>
+      this.handle(event),
+    );
+
+    const info: CubeInfo = {
+      deviceName: connection.deviceName,
+      deviceMAC: connection.deviceMAC,
+      generation: await this.readGeneration(connection),
+    };
+    this.handlers.onInfo(info);
+
+    await connection.sendCubeCommand({ type: 'REQUEST_HARDWARE' });
+    await connection.sendCubeCommand({ type: 'REQUEST_BATTERY' });
+    await connection.sendCubeCommand({ type: 'REQUEST_FACELETS' });
+    return info;
+  }
+
+  /** Which protocol generation the cube speaks, from the BLE service it exposes. */
+  private async readGeneration(connection: GanCubeConnection): Promise<Generation> {
+    try {
+      const device = (connection as unknown as { device?: BluetoothDevice }).device;
+      const services = await device?.gatt?.getPrimaryServices();
+      for (const service of services ?? []) {
+        const match = GENERATION_SERVICES.find(([uuid]) => uuid === service.uuid.toLowerCase());
+        if (match) return match[1];
+      }
+    } catch (error) {
+      this.handlers.onNote(`Could not read the protocol generation: ${String(error)}`);
+    }
+    return 'unknown';
+  }
+
+  async requestFacelets(): Promise<void> {
+    await this.connection?.sendCubeCommand({ type: 'REQUEST_FACELETS' });
+  }
+
+  async requestBattery(): Promise<void> {
+    await this.connection?.sendCubeCommand({ type: 'REQUEST_BATTERY' });
+  }
+
+  /** Tell the cube its own state is solved, for when tracking has drifted. */
+  async declareSolved(): Promise<void> {
+    await this.connection?.sendCubeCommand({ type: 'REQUEST_RESET' });
+  }
+
+  async disconnect(): Promise<void> {
+    this.subscription?.unsubscribe();
+    this.subscription = null;
+    const connection = this.connection;
+    this.connection = null;
+    await connection?.disconnect();
+    this.handlers.onDisconnect();
+  }
+
+  private handle(event: GanCubeEvent): void {
+    switch (event.type) {
+      case 'MOVE': {
+        const turn: WireTurn = {
+          face: WIRE_FACES[event.face],
+          dir: event.direction === 0 ? 1 : -1,
+          t: event.localTimestamp ?? event.timestamp,
+        };
+        this.handlers.onTurn(turn, event.move);
+        break;
+      }
+      case 'FACELETS':
+        this.handlers.onFacelets(event.facelets, event.serial);
+        break;
+      case 'BATTERY':
+        this.handlers.onInfo({ battery: event.batteryLevel });
+        break;
+      case 'HARDWARE':
+        this.handlers.onInfo({
+          hardwareName: event.hardwareName,
+          softwareVersion: event.softwareVersion,
+          hardwareVersion: event.hardwareVersion,
+          productDate: event.productDate,
+          gyroSupported: event.gyroSupported,
+        });
+        break;
+      case 'GYRO':
+        this.handlers.onInfo({ gyroSeen: true });
+        break;
+      case 'DISCONNECT':
+        this.subscription?.unsubscribe();
+        this.subscription = null;
+        this.connection = null;
+        this.handlers.onDisconnect();
+        break;
+    }
+  }
+}
