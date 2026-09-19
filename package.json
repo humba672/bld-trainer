@@ -1,0 +1,23 @@
+{
+  "name": "bld-trainer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "cubing": "^0.63.6",
+    "gan-web-bluetooth": "^3.0.2",
+    "idb-keyval": "^6.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}
