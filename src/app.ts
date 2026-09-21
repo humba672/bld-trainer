@@ -6,7 +6,7 @@
 import { TwistyPlayer } from 'cubing/twisty';
 import { del, get, set } from 'idb-keyval';
 
-import { SOLVED, equalUpToRotation, invertAlg } from './cube/cube';
+import { SOLVED, equalUpToRotation, invertAlg, looksLikeACube } from './cube/cube';
 import { CubeLink, bluetoothAvailable, type CubeInfo } from './cube/gan';
 import { findMissingTurns, type MissingTurns } from './cube/repair';
 import { CubeTracker, type Face, type WireTurn } from './cube/tracker';
@@ -32,6 +32,9 @@ let turnsSeen = 0;
 let lastTurnAt = 0;
 let checkInFlight: { turnsSeen: number; at: number } | null = null;
 let lostSinceCheck = 0;
+/** A disagreement seen once, kept until a second check agrees with it. */
+let unconfirmedMismatch: string | null = null;
+let garbledReadings = 0;
 
 /** How often to ask the cube for its own state while your hands are still. */
 const VERIFY_EVERY_MS = 2000;
@@ -99,17 +102,38 @@ const link = new CubeLink({
     checkInFlight = null;
     if (overtaken) return;
 
-    const matched = facelets === tracker.cubeFacelets();
-    lastCheck = { at: Date.now(), matched, reported: facelets };
-    missing = matched ? null : findMissingTurns(tracker.cubeFacelets(), facelets);
-    if (matched) {
+    // Bluetooth packets carry no integrity check, so a garbled one decodes to an impossible cube.
+    if (!looksLikeACube(facelets)) {
+      garbledReadings += 1;
+      render();
+      return;
+    }
+
+    if (facelets === tracker.cubeFacelets()) {
+      lastCheck = { at: Date.now(), matched: true, reported: facelets };
+      missing = null;
+      unconfirmedMismatch = null;
       lostSinceCheck = 0;
       if (note.startsWith('Bluetooth dropped')) setNote('');
-    } else if (missing && missing.turns.length) {
-      setNote(`The cube is ${missing.notation} ahead of the picture.`);
-    } else {
-      setNote('The cube and the picture disagree by more than a few turns.');
+      render();
+      return;
     }
+
+    // One disagreement could still be a bad packet that happens to decode to a legal cube. Unless
+    // the cube's own turn counter already told us turns were lost, wait for a second opinion.
+    if (!lostSinceCheck && unconfirmedMismatch !== facelets) {
+      unconfirmedMismatch = facelets;
+      return;
+    }
+    unconfirmedMismatch = null;
+
+    lastCheck = { at: Date.now(), matched: false, reported: facelets };
+    missing = findMissingTurns(tracker.cubeFacelets(), facelets);
+    setNote(
+      missing && missing.turns.length
+        ? `The cube is ${missing.notation} ahead of the picture.`
+        : 'The cube and the picture disagree by more than a few turns.',
+    );
     render();
   },
   onDisconnect: () => {
@@ -188,6 +212,7 @@ el('solved').addEventListener('click', async () => {
   lastCheck = null;
   missing = null;
   lostSinceCheck = 0;
+  unconfirmedMismatch = null;
   adoptedCubeState = true;
   if (link.connected) await link.declareSolved();
   setNote('Tracking restarted from a solved cube, white top and green front.');
@@ -222,6 +247,7 @@ el('clear-log').addEventListener('click', () => {
   lastCheck = null;
   missing = null;
   lostSinceCheck = 0;
+  unconfirmedMismatch = null;
   render();
 });
 
@@ -365,6 +391,7 @@ function renderDetails(): void {
   }
   if (link.connected) rows.push(['Checking', `automatically every ${VERIFY_EVERY_MS / 1000}s`]);
   if (lostSinceCheck) rows.push(['Turns Bluetooth dropped', String(lostSinceCheck)]);
+  if (garbledReadings) rows.push(['Garbled readings ignored', String(garbledReadings)]);
 
   const details = el('details');
   details.innerHTML = '';
@@ -445,6 +472,7 @@ function applyMissingTurns(found: MissingTurns): void {
   missing = null;
   lastCheck = null;
   lostSinceCheck = 0;
+  unconfirmedMismatch = null;
   render();
   void verify();
 }

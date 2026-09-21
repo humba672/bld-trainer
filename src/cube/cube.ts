@@ -203,3 +203,24 @@ export function faceMapOf(rotationAlg: string): Record<Face, Face> {
 }
 
 export const OPPOSITE: Record<Face, Face> = { U: 'D', D: 'U', L: 'R', R: 'L', F: 'B', B: 'F' };
+
+/**
+ * Could this reading have come from a real cube?
+ *
+ * Bluetooth packets carry no integrity check, and the cube's state is decoded by deriving the last
+ * corner and edge from a sum, so one corrupted packet turns into a cube that cannot exist. Without
+ * this, such a reading would be reported as "the site lost a turn", which is a lie.
+ */
+export function looksLikeACube(facelets: string): boolean {
+  if (facelets.length !== 54) return false;
+
+  const counts = new Map<string, number>();
+  for (const sticker of facelets) counts.set(sticker, (counts.get(sticker) ?? 0) + 1);
+  if (counts.size !== 6) return false;
+  for (const face of FACES) {
+    if (counts.get(face) !== 9) return false;
+    // The cube always reports in its own frame, so its centres are never anywhere else.
+    if (facelets[FACES.indexOf(face) * 9 + 4] !== face) return false;
+  }
+  return true;
+}
