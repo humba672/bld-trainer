@@ -8,6 +8,7 @@ import { del, get, set } from 'idb-keyval';
 
 import { SOLVED, equalUpToRotation, invertAlg } from './cube/cube';
 import { CubeLink, bluetoothAvailable, type CubeInfo } from './cube/gan';
+import { findMissingTurns, type MissingTurns } from './cube/repair';
 import { CubeTracker, type Face, type WireTurn } from './cube/tracker';
 
 const MAC_KEY = 'cube-mac';
@@ -21,9 +22,20 @@ let macSource: 'saved' | 'read from the cube' | 'typed in' | null = null;
 let savedMac: string | null = null;
 let adoptedCubeState = false;
 let lastCheck: { at: number; matched: boolean; reported: string } | null = null;
+let missing: MissingTurns | null = null;
 let note = '';
 let view: '3D' | '2D' = '3D';
 let frame: 'holder' | 'cube' = 'holder';
+
+/** Turns seen since the page loaded, used to throw away a check that a turn overtook. */
+let turnsSeen = 0;
+let lastTurnAt = 0;
+let checkInFlight: { turnsSeen: number; at: number } | null = null;
+let lostSinceCheck = 0;
+
+/** How often to ask the cube for its own state while your hands are still. */
+const VERIFY_EVERY_MS = 2000;
+const SETTLE_MS = 800;
 
 // ---------------------------------------------------------------- the picture
 
@@ -50,7 +62,18 @@ function renderPicture(): void {
 
 const link = new CubeLink({
   onTurn: (turn) => {
+    turnsSeen += 1;
+    lastTurnAt = performance.now();
     tracker.onWire(turn);
+    render();
+  },
+  onTurnsLost: (count) => {
+    // The cube's turn counter skipped, so Bluetooth dropped turns we will never be sent.
+    lostSinceCheck += count;
+    turnsSeen += count;
+    setNote(
+      `Bluetooth dropped ${count} turn${count === 1 ? '' : 's'} — asking the cube what it really looks like…`,
+    );
     render();
   },
   onInfo: (update) => {
@@ -67,12 +90,25 @@ const link = new CubeLink({
           ? 'Connected. The cube says it is solved — hold it white top, green front.'
           : 'Connected. Adopted the state the cube reports; hold it white top, green front.',
       );
+      render();
+      return;
+    }
+
+    // A turn that landed while the cube was answering would make an honest state look wrong.
+    const overtaken = checkInFlight !== null && checkInFlight.turnsSeen !== turnsSeen;
+    checkInFlight = null;
+    if (overtaken) return;
+
+    const matched = facelets === tracker.cubeFacelets();
+    lastCheck = { at: Date.now(), matched, reported: facelets };
+    missing = matched ? null : findMissingTurns(tracker.cubeFacelets(), facelets);
+    if (matched) {
+      lostSinceCheck = 0;
+      if (note.startsWith('Bluetooth dropped')) setNote('');
+    } else if (missing && missing.turns.length) {
+      setNote(`The cube is ${missing.notation} ahead of the picture.`);
     } else {
-      lastCheck = {
-        at: Date.now(),
-        matched: facelets === tracker.cubeFacelets(),
-        reported: facelets,
-      };
+      setNote('The cube and the picture disagree by more than a few turns.');
     }
     render();
   },
@@ -150,23 +186,42 @@ el('disconnect').addEventListener('click', () => void link.disconnect());
 el('solved').addEventListener('click', async () => {
   tracker.reset(SOLVED);
   lastCheck = null;
+  missing = null;
+  lostSinceCheck = 0;
   adoptedCubeState = true;
   if (link.connected) await link.declareSolved();
   setNote('Tracking restarted from a solved cube, white top and green front.');
   render();
 });
 
-el('check').addEventListener('click', async () => {
-  if (!link.connected) return;
-  setNote('Asked the cube for its own state…');
-  render();
-  await link.requestFacelets();
-  await link.requestBattery();
-});
+/**
+ * Ask the cube what it looks like and compare. Gen2 cubes drop turns without saying so, so this
+ * runs on its own every couple of seconds as well as on the button.
+ */
+async function verify(manual = false): Promise<void> {
+  if (!link.connected || !adoptedCubeState || checkInFlight) return;
+  checkInFlight = { turnsSeen, at: performance.now() };
+  if (manual) {
+    setNote('Asked the cube for its own state…');
+    render();
+  }
+  try {
+    await link.requestFacelets();
+    if (manual) await link.requestBattery();
+  } catch (error) {
+    checkInFlight = null;
+    setNote(`Could not reach the cube: ${String(error)}`);
+    render();
+  }
+}
+
+el('check').addEventListener('click', () => void verify(true));
 
 el('clear-log').addEventListener('click', () => {
   tracker.reset(SOLVED);
   lastCheck = null;
+  missing = null;
+  lostSinceCheck = 0;
   render();
 });
 
@@ -271,6 +326,13 @@ function renderHeader(): void {
     info.gyroSeen ? 'good' : '',
   );
   chip('drift', lastCheck && !lastCheck.matched ? 'Tracking has drifted' : null, 'bad');
+  chip(
+    'verified',
+    lastCheck?.matched
+      ? `Matches the cube · ${Math.max(0, Math.round((Date.now() - lastCheck.at) / 1000))}s ago`
+      : null,
+    'good',
+  );
 
   el('connect').hidden = link.connected;
   el('disconnect').hidden = !link.connected;
@@ -301,6 +363,8 @@ function renderDetails(): void {
         : `MISMATCH at ${new Date(lastCheck.at).toLocaleTimeString()}`,
     ]);
   }
+  if (link.connected) rows.push(['Checking', `automatically every ${VERIFY_EVERY_MS / 1000}s`]);
+  if (lostSinceCheck) rows.push(['Turns Bluetooth dropped', String(lostSinceCheck)]);
 
   const details = el('details');
   details.innerHTML = '';
@@ -329,8 +393,25 @@ function renderDetails(): void {
   if (lastCheck && !lastCheck.matched) {
     const warning = document.createElement('div');
     warning.className = 'mismatch';
-    warning.innerHTML =
-      '<p>The cube reports a different state from the one tracked here, so a turn was missed or misread.</p>';
+    const headline = document.createElement('p');
+    headline.textContent =
+      missing && missing.turns.length
+        ? `The cube has turns the picture never got: ${missing.notation}.`
+        : 'The cube reports a different state from the one tracked here, and too much is missing to work out what.';
+    warning.appendChild(headline);
+
+    if (missing && missing.turns.length) {
+      const repair = document.createElement('button');
+      repair.className = 'primary';
+      repair.textContent = `Add the missing ${missing.notation}`;
+      repair.addEventListener('click', () => applyMissingTurns(missing!));
+      warning.appendChild(repair);
+      const keeps = document.createElement('p');
+      keeps.className = 'hint';
+      keeps.textContent = 'Your log, the picture and which way the cube is facing all survive this.';
+      warning.appendChild(keeps);
+    }
+
     const tracked = document.createElement('code');
     tracked.textContent = `tracked ${tracker.cubeFacelets()}`;
     const reported = document.createElement('code');
@@ -340,6 +421,8 @@ function renderDetails(): void {
     adopt.addEventListener('click', () => {
       tracker.reset(lastCheck!.reported);
       lastCheck = null;
+      missing = null;
+      lostSinceCheck = 0;
       setNote("Restarted from the cube's own state. Hold it white top, green front.");
       render();
     });
@@ -348,6 +431,22 @@ function renderDetails(): void {
   }
 
   details.hidden = details.childElementCount === 0;
+}
+
+/** Feed the turns the cube saw but the browser never received back into the tracker. */
+function applyMissingTurns(found: MissingTurns): void {
+  tracker.flushAll();
+  const base = performance.now();
+  const gap = tracker.pairWindowMs * 3 + 50; // far enough apart never to be read as a slice
+  found.turns.forEach((turn, i) => tracker.onWire({ ...turn, t: base + i * gap }));
+  tracker.flushAll();
+
+  setNote(`Added the ${found.notation} the browser had missed. Check the picture against your cube.`);
+  missing = null;
+  lastCheck = null;
+  lostSinceCheck = 0;
+  render();
+  void verify();
 }
 
 function renderLog(): void {
@@ -422,6 +521,14 @@ function render(): void {
 setInterval(() => {
   if (tracker.pending.length && tracker.flushBefore(performance.now()).length) render();
 }, 40);
+
+// Keep checking the picture against the cube itself, so drift is caught in seconds.
+setInterval(() => {
+  const now = performance.now();
+  if (checkInFlight && now - checkInFlight.at > 2000) checkInFlight = null; // answer never came
+  if (now - lastTurnAt < SETTLE_MS) return; // mid-solve: leave the cube alone
+  void verify();
+}, VERIFY_EVERY_MS);
 
 if (!bluetoothAvailable()) {
   setNote('This browser has no Web Bluetooth — the demo buttons below still work. Use Chrome or Edge on the desktop to connect a cube.');

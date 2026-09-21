@@ -38,6 +38,8 @@ export interface CubeLinkHandlers {
   onTurn(turn: WireTurn, raw: string): void;
   onInfo(info: Partial<CubeInfo>): void;
   onFacelets(facelets: string, serial: number): void;
+  /** The cube numbers its turns; this fires when that count skips, so turns never reached us. */
+  onTurnsLost(count: number): void;
   onDisconnect(): void;
   onNote(text: string): void;
 }
@@ -48,6 +50,8 @@ export const bluetoothAvailable = (): boolean =>
 export class CubeLink {
   private connection: GanCubeConnection | null = null;
   private subscription: { unsubscribe(): void } | null = null;
+  /** The cube's own turn counter, as last seen. */
+  private lastSerial: number | null = null;
 
   constructor(private handlers: CubeLinkHandlers) {}
 
@@ -108,6 +112,7 @@ export class CubeLink {
     this.subscription = null;
     const connection = this.connection;
     this.connection = null;
+    this.lastSerial = null;
     await connection?.disconnect();
     this.handlers.onDisconnect();
   }
@@ -115,15 +120,25 @@ export class CubeLink {
   private handle(event: GanCubeEvent): void {
     switch (event.type) {
       case 'MOVE': {
+        // The Gen2 protocol replays at most seven missed turns and drops the rest in silence, so
+        // the cube's own serial number is the only warning that anything went astray.
+        if (this.lastSerial !== null) {
+          const skipped = ((event.serial - this.lastSerial) & 0xff) - 1;
+          if (skipped > 0 && skipped < 200) this.handlers.onTurnsLost(skipped);
+        }
+        this.lastSerial = event.serial;
+
         const turn: WireTurn = {
           face: WIRE_FACES[event.face],
           dir: event.direction === 0 ? 1 : -1,
           t: event.localTimestamp ?? event.timestamp,
+          ct: event.cubeTimestamp ?? undefined,
         };
         this.handlers.onTurn(turn, event.move);
         break;
       }
       case 'FACELETS':
+        this.lastSerial = event.serial;
         this.handlers.onFacelets(event.facelets, event.serial);
         break;
       case 'BATTERY':
@@ -145,6 +160,7 @@ export class CubeLink {
         this.subscription?.unsubscribe();
         this.subscription = null;
         this.connection = null;
+        this.lastSerial = null;
         this.handlers.onDisconnect();
         break;
     }

@@ -32,8 +32,14 @@ export interface WireTurn {
   face: Face;
   /** 1 clockwise, -1 anticlockwise, seen from outside that face. */
   dir: 1 | -1;
-  /** Host clock, in milliseconds. */
+  /** Host clock, in milliseconds: when this turn reached the browser. */
   t: number;
+  /**
+   * The cube's own clock, in milliseconds, when it has one. Turns the library recovers after
+   * missed Bluetooth packets all arrive at the same instant, so only this says when they really
+   * happened - and that is what decides whether two of them were one slice move.
+   */
+  ct?: number;
 }
 
 export type MoveKind = 'face' | 'slice' | 'wide';
@@ -150,7 +156,7 @@ export class CubeTracker {
     const out: LogEntry[] = [];
 
     // Anything too old to still be half of a slice is a plain face turn.
-    while (this.buffer.length && turn.t - this.buffer[0].t > this.pairWindowMs) {
+    while (this.buffer.length && this.tooFarApart(this.buffer[0], turn)) {
       out.push(this.resolve([this.buffer.shift()!]));
     }
 
@@ -168,6 +174,15 @@ export class CubeTracker {
     this.buffer.splice(0, partner + 1);
     out.push(this.resolve([held, turn]));
     return out;
+  }
+
+  /** Were these two turns made too far apart to be one slice move? */
+  private tooFarApart(held: WireTurn, turn: WireTurn): boolean {
+    const gap =
+      held.ct !== undefined && turn.ct !== undefined
+        ? Math.abs(turn.ct - held.ct)
+        : turn.t - held.t;
+    return gap > this.pairWindowMs;
   }
 
   /** Give up on slice partners that are now too late to arrive. */
