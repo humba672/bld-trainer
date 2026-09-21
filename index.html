@@ -24,6 +24,7 @@
         <span id="drift" class="chip bad" hidden></span>
       </div>
       <div class="actions">
+        <button id="reconnect" class="primary" hidden>Reconnect</button>
         <button id="connect" class="primary">Connect cube</button>
         <button id="disconnect" hidden>Disconnect</button>
         <button id="solved" title="Tell the site and the cube that the cube is solved, held white top, green front">
@@ -36,6 +37,15 @@
     </header>
 
     <p id="note" class="note" hidden></p>
+
+    <section id="connect-help" class="details">
+      <label id="auto-connect-row" hidden>
+        <input type="checkbox" id="auto-connect" />
+        Connect to this cube by itself when the page opens
+      </label>
+      <span class="hint">Turn a face to wake the cube before connecting, or it can take ten seconds to appear.</span>
+      <span id="remember-hint" class="hint" hidden></span>
+    </section>
 
     <section id="details" class="details"></section>
 

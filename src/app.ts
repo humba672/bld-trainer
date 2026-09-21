@@ -7,11 +7,18 @@ import { TwistyPlayer } from 'cubing/twisty';
 import { del, get, set } from 'idb-keyval';
 
 import { SOLVED, equalUpToRotation, invertAlg, looksLikeACube } from './cube/cube';
-import { CubeLink, bluetoothAvailable, type CubeInfo } from './cube/gan';
+import {
+  CubeLink,
+  bluetoothAvailable,
+  canRememberCubes,
+  rememberedCubes,
+  type CubeInfo,
+} from './cube/gan';
 import { findMissingTurns, type MissingTurns } from './cube/repair';
 import { CubeTracker, type Face, type WireTurn } from './cube/tracker';
 
 const MAC_KEY = 'cube-mac';
+const AUTO_CONNECT_KEY = 'auto-connect';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -35,6 +42,11 @@ let lostSinceCheck = 0;
 /** A disagreement seen once, kept until a second check agrees with it. */
 let unconfirmedMismatch: string | null = null;
 let garbledReadings = 0;
+
+/** A cube this browser already has permission for, so connecting needs no dialog. */
+let remembered: BluetoothDevice | null = null;
+let autoConnect = true;
+let connecting = false;
 
 /** How often to ask the cube for its own state while your hands are still. */
 const VERIFY_EVERY_MS = 2000;
@@ -81,6 +93,13 @@ const link = new CubeLink({
   },
   onInfo: (update) => {
     info = { ...info, ...update };
+    // However the MAC was found, keep it: without one, connecting by itself would mean either a
+    // ten-second wait on the advertisement or a dialog nobody asked for.
+    if (update.deviceMAC && update.deviceMAC !== savedMac) {
+      savedMac = update.deviceMAC;
+      macSource = macSource ?? 'read from the cube';
+      void set(MAC_KEY, update.deviceMAC);
+    }
     render();
   },
   onFacelets: (facelets) => {
@@ -172,39 +191,80 @@ async function askForMac(deviceName: string): Promise<string | null> {
   });
 }
 
+const macProvider = async (device: BluetoothDevice, isFallback?: boolean) => {
+  savedMac = (await get<string>(MAC_KEY)) ?? null;
+  if (savedMac) {
+    macSource = 'saved';
+    return savedMac;
+  }
+  if (!isFallback) return null; // let the library try to read it from the advertisement
+  const typed = await askForMac(device.name ?? 'the cube');
+  if (typed) {
+    await set(MAC_KEY, typed);
+    savedMac = typed;
+    macSource = 'typed in';
+  }
+  return typed;
+};
+
 async function connect(): Promise<void> {
   if (!bluetoothAvailable()) {
     setNote('This browser has no Web Bluetooth. Use Chrome or Edge on the desktop.');
     return render();
   }
+  if (connecting || link.connected) return;
+  connecting = true;
   setNote('Pick your cube in the browser’s device list…');
   render();
   try {
-    await link.connect(async (device, isFallback) => {
-      savedMac = (await get<string>(MAC_KEY)) ?? null;
-      if (savedMac) {
-        macSource = 'saved';
-        return savedMac;
-      }
-      if (!isFallback) return null; // let the library try to read it from the advertisement
-      const typed = await askForMac(device.name ?? 'the cube');
-      if (typed) {
-        await set(MAC_KEY, typed);
-        savedMac = typed;
-        macSource = 'typed in';
-      }
-      return typed;
-    });
+    await link.connect(macProvider);
     if (!macSource) macSource = 'read from the cube';
+    await rememberCube();
   } catch (error) {
     setNote(`Could not connect: ${(error as Error).message ?? String(error)}`);
   }
+  connecting = false;
   render();
+}
+
+/** Connect straight to the cube this browser remembers, with no dialog at all. */
+async function reconnect(automatic = false): Promise<void> {
+  if (!remembered || connecting || link.connected) return;
+  connecting = true;
+  setNote(`Connecting to ${remembered.name ?? 'your cube'}…`);
+  render();
+  try {
+    await link.connectRemembered(
+      remembered,
+      automatic ? async () => savedMac : macProvider, // never open a dialog unasked
+    );
+    if (!macSource) macSource = 'read from the cube';
+  } catch (error) {
+    setNote(
+      automatic
+        ? `${remembered.name ?? 'The cube'} did not answer. Turn a face to wake it, then press Reconnect.`
+        : `Could not reach the cube: ${(error as Error).message ?? String(error)}`,
+    );
+  }
+  connecting = false;
+  render();
+}
+
+/** Note which cube the browser is now allowed to reconnect to without asking. */
+async function rememberCube(): Promise<void> {
+  remembered = (await rememberedCubes())[0] ?? null;
 }
 
 // ---------------------------------------------------------------- controls
 
-el('connect').addEventListener('click', connect);
+el('connect').addEventListener('click', () => void connect());
+el('reconnect').addEventListener('click', () => void reconnect());
+
+const autoConnectBox = el<HTMLInputElement>('auto-connect');
+autoConnectBox.addEventListener('change', () => {
+  autoConnect = autoConnectBox.checked;
+  void set(AUTO_CONNECT_KEY, autoConnect);
+});
 el('disconnect').addEventListener('click', () => void link.disconnect());
 
 el('solved').addEventListener('click', async () => {
@@ -530,6 +590,28 @@ function wideNameFor(move: string): string {
   return `${opposite[face] ?? face}w${move.endsWith("'") ? "'" : ''}`;
 }
 
+function renderConnectHelp(): void {
+  const reconnectButton = el<HTMLButtonElement>('reconnect');
+  const offerReconnect = !!remembered && !link.connected && !connecting;
+  reconnectButton.hidden = !offerReconnect;
+  reconnectButton.textContent = `Reconnect to ${remembered?.name ?? 'your cube'}`;
+  el('connect').classList.toggle('primary', !offerReconnect);
+  el('connect').textContent = offerReconnect ? 'Pick a different cube' : 'Connect cube';
+
+  el('auto-connect-row').hidden = !remembered;
+  autoConnectBox.checked = autoConnect;
+
+  // Without Chrome's newer permissions backend there is no way to remember a cube at all.
+  const hint = el('remember-hint');
+  const needsFlag = bluetoothAvailable() && !canRememberCubes();
+  hint.hidden = !needsFlag;
+  hint.textContent = needsFlag
+    ? 'To skip the device dialog for good: open chrome://flags/#enable-web-bluetooth-new-permissions-backend, turn it on, restart Chrome, and connect once more.'
+    : '';
+
+  el('connect-help').hidden = link.connected;
+}
+
 function renderToggles(): void {
   el('view-3d').classList.toggle('on', view === '3D');
   el('view-2d').classList.toggle('on', view === '2D');
@@ -539,6 +621,7 @@ function renderToggles(): void {
 
 function render(): void {
   renderHeader();
+  renderConnectHelp();
   renderDetails();
   renderLog();
   renderToggles();
@@ -562,6 +645,18 @@ if (!bluetoothAvailable()) {
   setNote('This browser has no Web Bluetooth — the demo buttons below still work. Use Chrome or Edge on the desktop to connect a cube.');
 }
 render();
+
+/** Pick up what the browser already knows, and reconnect on its own if it knows the cube. */
+async function start(): Promise<void> {
+  savedMac = (await get<string>(MAC_KEY)) ?? null;
+  autoConnect = (await get<boolean>(AUTO_CONNECT_KEY)) ?? true;
+  await rememberCube();
+  render();
+  // Without a saved MAC an automatic attempt cannot finish quietly, so leave it to the button.
+  if (remembered && autoConnect && savedMac) await reconnect(true);
+}
+
+void start();
 
 // Handy in the console while testing, but nothing here is only reachable that way.
 Object.assign(window as unknown as Record<string, unknown>, {

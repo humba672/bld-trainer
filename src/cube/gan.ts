@@ -47,6 +47,26 @@ export interface CubeLinkHandlers {
 export const bluetoothAvailable = (): boolean =>
   typeof navigator !== 'undefined' && !!(navigator as Navigator).bluetooth;
 
+type BluetoothWithMemory = Bluetooth & { getDevices?: () => Promise<BluetoothDevice[]> };
+
+/** Can this browser remember a cube you have already allowed, so the picker can be skipped? */
+export const canRememberCubes = (): boolean =>
+  bluetoothAvailable() && typeof (navigator.bluetooth as BluetoothWithMemory).getDevices === 'function';
+
+/**
+ * Cubes this browser already has permission for. Chrome only answers this with the new Web
+ * Bluetooth permissions backend enabled, so an empty list means "ask the usual way".
+ */
+export async function rememberedCubes(): Promise<BluetoothDevice[]> {
+  if (!canRememberCubes()) return [];
+  try {
+    const devices = await (navigator.bluetooth as BluetoothWithMemory).getDevices!();
+    return devices.filter((device) => /^(GAN|MG|AiCube)/i.test(device.name ?? ''));
+  } catch {
+    return [];
+  }
+}
+
 export class CubeLink {
   private connection: GanCubeConnection | null = null;
   private subscription: { unsubscribe(): void } | null = null;
@@ -77,6 +97,24 @@ export class CubeLink {
     await connection.sendCubeCommand({ type: 'REQUEST_BATTERY' });
     await connection.sendCubeCommand({ type: 'REQUEST_FACELETS' });
     return info;
+  }
+
+  /**
+   * Connect to a cube this browser already knows, with no device picker.
+   *
+   * connectGanCube always opens the picker itself and the library does not export the parts needed
+   * to go around it, so for the length of that one call the picker is stood in for and handed the
+   * remembered device. The real one is put back immediately afterwards, whatever happens.
+   */
+  async connectRemembered(device: BluetoothDevice, macProvider: MacProvider): Promise<CubeInfo> {
+    const bluetooth = navigator.bluetooth;
+    const picker = bluetooth.requestDevice;
+    bluetooth.requestDevice = (async () => device) as typeof picker;
+    try {
+      return await this.connect(macProvider);
+    } finally {
+      bluetooth.requestDevice = picker;
+    }
   }
 
   /**
