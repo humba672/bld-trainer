@@ -286,6 +286,34 @@ describe('reset', () => {
   });
 });
 
+describe("turns recovered in a batch, which all arrive at the same moment", () => {
+  // When the browser misses Bluetooth packets the library replays up to seven turns at once, and
+  // they all land with the same arrival time. Pairing has to go by the cube's own clock, or two
+  // turns made seconds apart get read as one slice.
+  it('does not pair two turns the cube timed far apart', () => {
+    const tracker = newTracker();
+    tracker.onWire({ face: 'R', dir: 1, t: 5000, ct: 1000 });
+    tracker.onWire({ face: 'L', dir: -1, t: 5000, ct: 3400 });
+    tracker.flushAll();
+    expect(tracker.entries.map((e) => e.move)).toEqual(['R', "L'"]);
+  });
+
+  it('pairs two turns the cube timed together, however late they arrive', () => {
+    const tracker = newTracker();
+    tracker.onWire({ face: 'R', dir: 1, t: 5000, ct: 1000 });
+    tracker.onWire({ face: 'L', dir: -1, t: 5000, ct: 1012 });
+    expect(tracker.entries.map((e) => e.move)).toEqual(['M']);
+  });
+
+  it('falls back to arrival time when the cube gives no clock', () => {
+    const tracker = newTracker();
+    tracker.onWire({ face: 'R', dir: 1, t: 5000 });
+    tracker.onWire({ face: 'L', dir: -1, t: 5010, ct: 1012 });
+    tracker.flushAll();
+    expect(tracker.entries.map((e) => e.move)).toEqual(['M']);
+  });
+});
+
 describe('a long mixed run against the emulated cube', () => {
   // Deterministic, so any failure is reproducible.
   const rng = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
