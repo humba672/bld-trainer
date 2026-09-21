@@ -79,17 +79,25 @@ export class CubeLink {
     return info;
   }
 
-  /** Which protocol generation the cube speaks, from the BLE service it exposes. */
+  /**
+   * Which protocol generation the cube speaks, from the BLE service it exposes.
+   *
+   * This is for the record only, never for talking to the cube, so a failure here is worth a
+   * quiet "unknown" rather than an alarm about the connection - which is reported on its own.
+   */
   private async readGeneration(connection: GanCubeConnection): Promise<Generation> {
-    try {
-      const device = (connection as unknown as { device?: BluetoothDevice }).device;
-      const services = await device?.gatt?.getPrimaryServices();
-      for (const service of services ?? []) {
-        const match = GENERATION_SERVICES.find(([uuid]) => uuid === service.uuid.toLowerCase());
-        if (match) return match[1];
+    const device = (connection as unknown as { device?: BluetoothDevice }).device;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const services = await device?.gatt?.getPrimaryServices();
+        for (const service of services ?? []) {
+          const match = GENERATION_SERVICES.find(([uuid]) => uuid === service.uuid.toLowerCase());
+          if (match) return match[1];
+        }
+        return 'unknown';
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 250));
       }
-    } catch (error) {
-      this.handlers.onNote(`Could not read the protocol generation: ${String(error)}`);
     }
     return 'unknown';
   }
