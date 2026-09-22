@@ -348,3 +348,271 @@ dialog menu {
   color: var(--bad);
   font-size: 0.8rem;
 }
+
+/* ---------------------------------------------------------------- shell */
+
+#app {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: 100vh;
+}
+
+.menu {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0.75rem;
+  gap: 0.15rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand {
+  font-weight: 700;
+  padding: 0 0.5rem 0.9rem;
+  letter-spacing: 0.01em;
+}
+
+.menu a,
+a.button {
+  display: block;
+  color: var(--dim);
+  text-decoration: none;
+  padding: 0.45rem 0.6rem;
+  border-radius: 7px;
+  font-size: 0.9rem;
+}
+
+.menu a:hover {
+  background: #22262e;
+  color: var(--text);
+}
+
+.menu a.on {
+  background: #232c3b;
+  color: var(--accent);
+}
+
+.needs-cube {
+  color: var(--accent);
+  float: right;
+  font-size: 0.8rem;
+}
+
+.menu-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.75rem;
+}
+
+.screen {
+  padding: 1.25rem 1.5rem 3rem;
+  min-width: 0;
+}
+
+.screen-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.screen-head h1 {
+  font-size: 1.15rem;
+  margin: 0;
+  margin-right: auto;
+}
+
+.two-up {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.panel + .panel,
+.two-up + .two-up,
+.two-up + .panel,
+.panel + .two-up {
+  margin-top: 1rem;
+}
+
+a.button {
+  border: 1px solid var(--line);
+  background: #262b33;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+a.button:hover {
+  border-color: var(--accent);
+}
+
+button.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+/* ---------------------------------------------------------------- drills */
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.3rem;
+  margin-top: 0.75rem;
+}
+
+.keypad button {
+  font-family: ui-monospace, monospace;
+  padding: 0.5rem 0;
+}
+
+.verdict {
+  font-size: 1rem;
+  margin: 0.75rem 0 0;
+  min-height: 1.4rem;
+}
+
+.verdict.good,
+.good {
+  color: var(--good);
+}
+
+.verdict.bad,
+.bad {
+  color: var(--bad);
+}
+
+.scramble {
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin: 0 0 0.5rem;
+  word-spacing: 0.3rem;
+}
+
+.apply-state {
+  margin: 0.5rem 0;
+}
+
+input[type='text'],
+input:not([type]),
+select {
+  background: #11141a;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  width: 100%;
+  max-width: 34rem;
+  margin-bottom: 0.6rem;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.08em;
+}
+
+select {
+  max-width: 14rem;
+  font-family: inherit;
+  letter-spacing: 0;
+  margin-bottom: 0;
+}
+
+label {
+  color: var(--dim);
+  font-size: 0.8rem;
+  display: inline-block;
+  margin-bottom: 0.2rem;
+}
+
+.mono {
+  font-family: ui-monospace, monospace;
+}
+
+.table-wrap.short {
+  max-height: 220px;
+}
+
+/* ---------------------------------------------------------------- pairs */
+
+.pair-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.pair-card {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.pair-card.has-mine {
+  border-color: var(--accent);
+}
+
+.pair-name {
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pair-image {
+  color: var(--dim);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pair-chip {
+  font-family: ui-monospace, monospace;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.pairs {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+dialog.pair-panel {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 340px;
+  max-width: 420px;
+}
+
+dialog.pair-panel h2 {
+  font-size: 1.4rem;
+  font-family: ui-monospace, monospace;
+  color: var(--text);
+  letter-spacing: 0.08em;
+}
+
+dialog.pair-panel h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin: 1rem 0 0.4rem;
+}
+
+dialog.pair-panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}

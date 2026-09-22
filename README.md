@@ -5,9 +5,10 @@ A personal site for learning 3x3 blindfolded solving with a GAN 356 i Carry smar
 
 **Live:** https://humba672.github.io/bld-trainer/
 
-Phase P0, this build, proves the cube link: connect over Web Bluetooth, read every turn, show
-the cube on screen, handle slice and wide moves, and report which GAN protocol generation the
-cube speaks. Nothing from later phases is here yet.
+Phases P0 and P1 are built. P0 is the cube link: connect over Web Bluetooth, read every turn,
+show the cube on screen, handle slice and wide moves, and report the GAN protocol generation.
+P1 is the foundations: Home, Letter drill, Tracing drill, Letter pairs, Settings, and the Old
+Pochmann memo generator underneath them.
 
 ## Local
 
@@ -29,7 +30,11 @@ what the cube would put on the wire.
 | `src/cube/cube.ts` | The 54 stickers, every move generated from the geometry, and comparison that ignores which way the cube is facing |
 | `src/cube/tracker.ts` | Wire turns to moves: slice pairing, the hidden core turn, wide moves |
 | `src/cube/gan.ts` | The Bluetooth link, MAC handling, protocol generation |
-| `src/app.ts` | The screen |
+| `src/bld/speffz.ts` | Speffz lettering, sticker by sticker |
+| `src/bld/op.ts` | Old Pochmann memo and the turns that execute it |
+| `src/bld/drills.ts` | What counts as a correct memo, and which sticker to ask about next |
+| `src/screens/` | One file per screen |
+| `src/session.ts` | The one live cube connection, shared by every screen |
 
 ## Why a slice looks like two turns
 
@@ -43,6 +48,13 @@ the core, so:
   <kbd>W</kbd>.
 - A real `R L'` and an `M` are identical on the wire. Only the display depends on the guess;
   every state comparison ignores orientation.
+
+## Known gap
+
+Scrambles fall back to 25 random turns instead of random state. cubing.js can do random state,
+but its solver runs in a worker and none of its three ways of locating that worker survive this
+bundler - each ends up loading our own bundle as the worker. The site says which kind of scramble
+you are looking at rather than pretending. See `src/bld/scramble.ts`.
 
 ## The P0 test
 
