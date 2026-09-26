@@ -57,6 +57,8 @@ export function setNote(text: string): void {
 let lastTurnAt = 0;
 let checkInFlight: { turnsSeen: number; at: number } | null = null;
 let unconfirmedMismatch: string | null = null;
+/** One-shot listeners waiting for the cube to say what state it is in. */
+const faceletWaiters: Array<(facelets: string) => void> = [];
 
 export const link = new CubeLink({
   onTurn: (turn) => {
@@ -83,6 +85,9 @@ export const link = new CubeLink({
     changed();
   },
   onFacelets: (facelets) => {
+    // Hand the raw reading to anyone who asked for it, whatever else happens below.
+    for (const waiter of faceletWaiters.splice(0)) waiter(facelets);
+
     if (!state.adopted) {
       state.adopted = true;
       tracker.reset(facelets);
@@ -284,6 +289,29 @@ export async function verify(manual = false): Promise<void> {
     setNote(`Could not reach the cube: ${String(error)}`);
     changed();
   }
+}
+
+/**
+ * Ask the cube what state it is in and wait for the answer.
+ *
+ * This is the cube's own word rather than anything tracked here, which is what makes it worth
+ * checking a finished solve against.
+ */
+export function requestCubeState(timeoutMs = 3000): Promise<string | null> {
+  if (!link.connected) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      const index = faceletWaiters.indexOf(waiter);
+      if (index >= 0) faceletWaiters.splice(index, 1);
+      resolve(null);
+    }, timeoutMs);
+    const waiter = (facelets: string) => {
+      clearTimeout(timer);
+      resolve(facelets);
+    };
+    faceletWaiters.push(waiter);
+    void link.requestFacelets();
+  });
 }
 
 /** Start again from a cube you are holding solved, telling the cube itself as well. */

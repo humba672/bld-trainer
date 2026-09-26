@@ -236,16 +236,6 @@ export function analyseSolve(scrambled: string, turns: Turn[]): SolveAnalysis {
     unclear.push('the cross was never complete');
     crossIndex = 0;
   }
-  // Every pair insertion swings a cross edge out and back, so a broken cross is only worth
-  // remarking on when it stays broken for longer than any insertion could account for.
-  let brokenRun = 0;
-  for (let i = crossIndex; i < states.length; i++) {
-    brokenRun = crossSolved(states[i]) ? 0 : brokenRun + 1;
-    if (brokenRun > 8) {
-      unclear.push('the cross came apart and had to be rebuilt');
-      break;
-    }
-  }
 
   // Only read the cube at rest. Inserting a pair swings neighbouring slots out and back on the
   // way - R' D R takes the back-right pair with it - so a reading taken mid-insertion would credit
@@ -253,23 +243,44 @@ export function analyseSolve(scrambled: string, turns: Turn[]): SolveAnalysis {
   const checkpoints: number[] = [];
   for (let i = 0; i < states.length; i++) if (crossSolved(states[i])) checkpoints.push(i);
 
+  // F2L is over the first time all four slots are in at once. Everything after that is the last
+  // layer, whose algorithms break and remake the cross and swing slots out and back constantly -
+  // none of which is pair work, and all of which would otherwise be read as some.
+  const f2lDone =
+    checkpoints.find((i) => SLOT_NAMES.every((slot) => slotSolved(states[i], slot))) ?? -1;
+  if (f2lDone === -1) unclear.push('the first two layers were never all in at once');
+  const f2lIndex = f2lDone === -1 ? states.length - 1 : f2lDone;
+
   const slotFilled = new Map<SlotName, number>();
   for (const slot of SLOT_NAMES) {
     let filledAt = -1;
     let wasIn = false;
     let takenApart = false;
     for (const i of checkpoints) {
+      if (i > f2lIndex) break;
       const isIn = slotSolved(states[i], slot);
       if (isIn && !wasIn) filledAt = i;
       if (!isIn && wasIn) takenApart = true;
       wasIn = isIn;
     }
-    if (!wasIn || filledAt < 0) {
+    if (filledAt < 0) {
       unclear.push(`${slot} never went in`);
       continue;
     }
     if (takenApart) unclear.push(`${slot} was filled and taken apart again`);
     slotFilled.set(slot, filledAt);
+  }
+
+  // Every pair insertion swings a cross edge out and back, and last layer algorithms do it over
+  // and over, so a broken cross is only worth remarking on while the first two layers are being
+  // built, and only when it stays broken longer than an insertion could account for.
+  let brokenRun = 0;
+  for (let i = crossIndex; i <= f2lIndex; i++) {
+    brokenRun = crossSolved(states[i]) ? 0 : brokenRun + 1;
+    if (brokenRun > 8) {
+      unclear.push('the cross came apart and had to be rebuilt');
+      break;
+    }
   }
 
   const order = [...slotFilled.entries()].sort((a, b) => a[1] - b[1]);
@@ -294,9 +305,10 @@ export function analyseSolve(scrambled: string, turns: Turn[]): SolveAnalysis {
     previousEnd = filledAt;
   }
 
-  const f2lIndex = previousEnd;
-  let ollIndex = states.findIndex((state, i) => i >= f2lIndex && lastLayerOriented(state));
-  if (ollIndex === -1) ollIndex = states.length - 1;
+  // The last layer is oriented at the first point of rest after F2L where every one of its
+  // stickers faces the same way. Points of rest only, for the same reason as above.
+  const ollIndex =
+    checkpoints.find((i) => i >= f2lIndex && lastLayerOriented(states[i])) ?? states.length - 1;
 
   return {
     solved,

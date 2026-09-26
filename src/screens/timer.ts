@@ -22,7 +22,7 @@ import {
   type Penalty,
   type Solve,
 } from '../timer/averages';
-import { isConnected, onCubeChange, tracker } from '../session';
+import { isConnected, onCubeChange, requestCubeState, state as session, tracker } from '../session';
 import {
   addSolve,
   loadSolves,
@@ -108,6 +108,19 @@ export function mountTimer(container: HTMLElement): () => void {
   async function finishSolve(): Promise<void> {
     const turns = run.turns;
     const analysis = analyseSolve(scrambledState, turns);
+
+    // Check the whole solve against the cube itself: do the turns recorded actually add up to the
+    // state the cube says it is in? If Bluetooth lost anything, this is where it shows.
+    const turnsAtFinish = session.turnsSeen;
+    const replayed = applyAlg(scrambledState, turns.map((turn) => turn.move).join(' '));
+    const reported = await requestCubeState();
+    const verified =
+      reported === null || session.turnsSeen !== turnsAtFinish ? null : reported === replayed;
+    const unclear = [...analysis.unclear];
+    if (verified === false) {
+      unclear.push('the cube does not agree with the turns recorded, so turns went missing');
+    }
+
     const solve: Solve = {
       at: Date.now(),
       scramble,
@@ -115,7 +128,8 @@ export function mountTimer(container: HTMLElement): () => void {
       timeMs: analysis.timeMs,
       penalty: pendingPenalty,
       moves: turns,
-      unclear: analysis.unclear,
+      unclear,
+      verified,
       stages: analysis.stages,
       pairs: analysis.pairs.map(({ slot, caseKey, recognitionMs, executionMs }) => ({
         slot,
@@ -225,6 +239,14 @@ export function mountTimer(container: HTMLElement): () => void {
     if (last && phase() === 'done') {
       rows(el('breakdown'), [
         ['Time', formatMs(effectiveMs(last))],
+        [
+          'Checked against the cube',
+          last.verified === true
+            ? 'every turn accounted for'
+            : last.verified === false
+              ? 'DISAGREES — turns went missing'
+              : 'could not ask the cube',
+        ],
         ['Moves', String(last.moveCount ?? 0)],
         ['Turns per second', (last.tps ?? 0).toFixed(2)],
         ['Cross', formatMs(last.stages?.crossMs ?? 0)],

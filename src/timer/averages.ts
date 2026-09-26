@@ -22,6 +22,11 @@ export interface Solve {
   pairs?: Array<{ slot: string; caseKey: string; recognitionMs: number; executionMs: number }>;
   moveCount?: number;
   tps?: number;
+  /**
+   * Whether the turns recorded actually add up to the state the cube says it is in. True means the
+   * cube's own packets agree with the reconstruction; null means it could not be asked.
+   */
+  verified?: boolean | null;
 }
 
 /** What the clock says once penalties are counted. DNF sorts last. */

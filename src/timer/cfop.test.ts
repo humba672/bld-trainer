@@ -169,6 +169,35 @@ describe('reading a whole solve', () => {
     expect(analysis.unclear.join(' ')).toMatch(/FR/);
   });
 
+  it('does not let the last layer eat the F2L', () => {
+    // A whole solve: four pairs, then a Sune, then a T perm. Both of those turn the free layer
+    // and a side face, which breaks and remakes the cross over and over and swings slots out and
+    // back. None of that is pair work and none of it should be read as any.
+    const { scrambled, solution } = buildSolve([
+      "R' D R",
+      "F' D' F",
+      "L' D L",
+      "B' D' B",
+      // The solver holds white down, which is a z2 from the frame the cube reports, so their R
+      // is this L and their U is this D. A Sune and a T perm, translated.
+      "L D L' D L D2 L'",
+      "L D L' D' L' F L2 D' L' D' L D L' F'",
+    ]);
+    const analysis = analyseSolve(scrambled, turns(solution, 0, 100));
+
+    expect(analysis.solved).toBe(true);
+    expect(analysis.pairs.map((pair) => pair.slot)).toEqual(['FR', 'FL', 'BL', 'BR']);
+    expect(analysis.unclear).toEqual([]);
+
+    // F2L ends when the fourth pair goes in. The clock starts on the first turn, so twelve
+    // turns at 100ms apart is eleven gaps.
+    expect(analysis.stages.crossMs).toBe(0);
+    expect(analysis.stages.f2lMs).toBe(1100);
+    // The Sune is seven moves and the T perm fourteen.
+    expect(analysis.stages.ollMs).toBe(700);
+    expect(analysis.stages.pllMs).toBe(1400);
+  });
+
   it('measures how fast you turned', () => {
     const { scrambled, solution } = buildSolve(["R' D R", "F' D' F", "L' D L", "B' D' B"]);
     const analysis = analyseSolve(scrambled, turns(solution, 0, 100));
