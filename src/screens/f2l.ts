@@ -54,13 +54,13 @@ export function mountF2L(container: HTMLElement): () => void {
         <div id="case-picture"></div>
         <div class="drill-what">
           <p id="setup" class="scramble"></p>
+          <div id="drill-clock" class="clock">0.00</div>
           <p id="drill-prompt" class="prompt"></p>
           <div class="controls">
             <button id="solved" hidden>My cube is solved</button>
           </div>
         </div>
       </div>
-      <div id="drill-clock" class="clock">0.00</div>
       <div id="drill-recent" class="details"></div>
     </section>
 

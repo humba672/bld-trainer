@@ -1,6 +1,6 @@
 /**
- * The frame every screen sits in: the left-hand menu, the screen itself, and a connection chip
- * that is visible wherever you are.
+ * The frame every screen sits in: a thin bar across the top, and the screen itself below it with
+ * the whole width to work in.
  */
 
 import { onCubeChange, state, isConnected } from './session';
@@ -10,7 +10,7 @@ export interface Screen {
   title: string;
   /** Shown in the menu as a reminder that this one needs the cube in your hands. */
   needsCube?: boolean;
-  /** Screens with the same section are grouped under a heading. */
+  /** Screens with the same section are grouped after a divider. */
   section?: string;
   mount(container: HTMLElement): void | (() => void);
 }
@@ -29,35 +29,29 @@ function currentId(): string {
 
 export function startShell(root: HTMLElement): void {
   root.innerHTML = `
-    <nav class="menu">
-      <div class="brand">BLD Trainer</div>
-      <div class="menu-items"></div>
-      <div class="menu-foot">
-        <span id="menu-link" class="chip off">Disconnected</span>
-        <span id="menu-battery" class="chip" hidden></span>
-      </div>
-    </nav>
+    <header class="topbar">
+      <span class="brand">bld trainer</span>
+      <nav class="nav"></nav>
+      <span class="status">
+        <span id="link-state" class="state"></span>
+        <span id="link-battery" class="state" hidden></span>
+      </span>
+    </header>
     <section class="screen" id="screen"></section>`;
 
-  const items = root.querySelector<HTMLElement>('.menu-items')!;
+  const nav = root.querySelector<HTMLElement>('.nav')!;
   let section: string | undefined;
   for (const screen of screens) {
     if (screen.section !== section) {
       section = screen.section;
-      if (section) {
-        const heading = document.createElement('div');
-        heading.className = 'menu-section';
-        heading.textContent = section;
-        items.appendChild(heading);
-      }
+      if (section) nav.appendChild(document.createElement('hr'));
     }
     const link = document.createElement('a');
     link.href = `#${screen.id}`;
     link.dataset.screen = screen.id;
-    link.innerHTML = `${screen.title}${
-      screen.needsCube ? '<span class="needs-cube" title="Needs the cube">•</span>' : ''
-    }`;
-    items.appendChild(link);
+    link.textContent = screen.title;
+    if (screen.section) link.classList.add('secondary');
+    nav.appendChild(link);
   }
 
   const show = () => {
@@ -66,7 +60,7 @@ export function startShell(root: HTMLElement): void {
     const container = root.querySelector<HTMLElement>('#screen')!;
     container.innerHTML = '';
     container.dataset.screen = id;
-    items.querySelectorAll('a').forEach((link) => {
+    nav.querySelectorAll('a').forEach((link) => {
       link.classList.toggle('on', link.dataset.screen === id);
     });
     unmountCurrent = screens.find((screen) => screen.id === id)!.mount(container);
@@ -75,14 +69,16 @@ export function startShell(root: HTMLElement): void {
   window.addEventListener('hashchange', show);
   show();
 
-  const renderChips = () => {
-    const chip = root.querySelector<HTMLElement>('#menu-link')!;
-    chip.textContent = isConnected() ? `Connected · ${state.info.deviceName ?? 'cube'}` : 'Disconnected';
-    chip.className = `chip ${isConnected() ? 'on' : 'off'}`;
-    const battery = root.querySelector<HTMLElement>('#menu-battery')!;
+  const renderStatus = () => {
+    const link = root.querySelector<HTMLElement>('#link-state')!;
+    link.innerHTML = '<i></i>';
+    link.append(isConnected() ? state.info.deviceName ?? 'connected' : 'no cube');
+    link.className = `state ${isConnected() ? 'live' : 'off'}`;
+
+    const battery = root.querySelector<HTMLElement>('#link-battery')!;
     battery.hidden = state.info.battery === undefined;
-    battery.textContent = `Battery ${state.info.battery}%`;
+    battery.textContent = `${state.info.battery}%`;
   };
-  onCubeChange(renderChips);
-  renderChips();
+  onCubeChange(renderStatus);
+  renderStatus();
 }

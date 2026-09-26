@@ -69,23 +69,21 @@ export function mountTimer(container: HTMLElement): () => void {
         </div>
       </aside>
 
+      <aside class="cs-preview">
+        <div id="preview"></div>
+        <div class="cs-controls">
+          <label class="inline"><input type="checkbox" id="inspection" /> inspection</label>
+          <button id="new">new scramble</button>
+        </div>
+      </aside>
+
       <main class="cs-main">
         <p id="scramble" class="scramble cs-scramble">…</p>
         <p id="scramble-kind" class="hint cs-kind"></p>
-
-        <div class="cs-middle">
-          <div class="cs-clock-area">
-            <div id="clock" class="clock cs-clock">0.00</div>
-            <div id="running" class="cs-running"></div>
-            <p id="prompt" class="prompt"></p>
-          </div>
-          <div class="cs-preview">
-            <div id="preview"></div>
-            <div class="controls cs-controls">
-              <label class="inline"><input type="checkbox" id="inspection" /> inspection</label>
-              <button id="new">new scramble</button>
-            </div>
-          </div>
+        <div class="cs-clock-area">
+          <div id="clock" class="clock cs-clock">0.00</div>
+          <div id="running" class="cs-running"></div>
+          <p id="prompt" class="prompt"></p>
         </div>
       </main>
     </div>
