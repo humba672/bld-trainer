@@ -1,3 +1,12 @@
+html {
+  /*
+   * Reserve the scrollbar's width on both sides, always. Otherwise the centre of the page moves
+   * sideways by half a scrollbar the moment the content grows past the fold, and the clock and the
+   * scramble drift off the middle of the screen as solves pile up.
+   */
+  scrollbar-gutter: stable both-edges;
+}
+
 :root {
   color-scheme: dark;
   --bg: #14161a;
@@ -820,8 +829,11 @@ td .row-actions {
   max-height: 100%;
 }
 
+/* As wide as the picture itself, so it sits flush with the right margin the way the times sit
+   flush with the left. */
 .cs-preview {
   right: 0;
+  width: 156px;
   text-align: center;
 }
 
