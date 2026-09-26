@@ -6,6 +6,7 @@
  */
 
 import { del, get, keys, set } from 'idb-keyval';
+import type { Solve } from './timer/averages';
 
 export interface StickerStat {
   /** Times asked, times right, and the best and total time in milliseconds. */
@@ -43,6 +44,8 @@ const KEY = {
   tracing: 'tracing-attempts',
   pairImages: 'pair-images',
   progress: 'progress',
+  solves: 'solves',
+  timerSettings: 'timer-settings',
 } as const;
 
 export const loadMac = () => get<string>(KEY.mac);
@@ -84,6 +87,33 @@ export const loadProgress = async (): Promise<Progress> => ({
   ...((await get<Progress>(KEY.progress)) ?? {}),
 });
 export const saveProgress = (progress: Progress) => set(KEY.progress, progress);
+
+// ---------------------------------------------------------------- timer
+
+export const loadSolves = async (): Promise<Solve[]> => (await get<Solve[]>(KEY.solves)) ?? [];
+
+export async function addSolve(solve: Solve): Promise<Solve[]> {
+  const all = [...(await loadSolves()), solve];
+  await set(KEY.solves, all);
+  return all;
+}
+
+export async function replaceSolves(solves: Solve[]): Promise<Solve[]> {
+  await set(KEY.solves, solves);
+  return solves;
+}
+
+export interface TimerSettings {
+  /** WCA-style 15 second inspection before the clock starts. */
+  inspection: boolean;
+}
+
+export const loadTimerSettings = async (): Promise<TimerSettings> => ({
+  inspection: false,
+  ...((await get<TimerSettings>(KEY.timerSettings)) ?? {}),
+});
+
+export const saveTimerSettings = (settings: TimerSettings) => set(KEY.timerSettings, settings);
 
 // ---------------------------------------------------------------- export and import
 

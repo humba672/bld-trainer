@@ -10,6 +10,8 @@ export interface Screen {
   title: string;
   /** Shown in the menu as a reminder that this one needs the cube in your hands. */
   needsCube?: boolean;
+  /** Screens with the same section are grouped under a heading. */
+  section?: string;
   mount(container: HTMLElement): void | (() => void);
 }
 
@@ -38,7 +40,17 @@ export function startShell(root: HTMLElement): void {
     <section class="screen" id="screen"></section>`;
 
   const items = root.querySelector<HTMLElement>('.menu-items')!;
+  let section: string | undefined;
   for (const screen of screens) {
+    if (screen.section !== section) {
+      section = screen.section;
+      if (section) {
+        const heading = document.createElement('div');
+        heading.className = 'menu-section';
+        heading.textContent = section;
+        items.appendChild(heading);
+      }
+    }
     const link = document.createElement('a');
     link.href = `#${screen.id}`;
     link.dataset.screen = screen.id;

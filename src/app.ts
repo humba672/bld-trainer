@@ -4,6 +4,7 @@
  */
 
 import { mountCubeLink } from './screens/cube-link';
+import { mountTimer } from './screens/timer';
 import { mountHome } from './screens/home';
 import { mountLetterDrill } from './screens/letter-drill';
 import { mountLetterPairs } from './screens/letter-pairs';
@@ -13,12 +14,19 @@ import { bluetoothSupported, setNote, startSession } from './session';
 import { registerScreens, startShell } from './shell';
 
 registerScreens([
-  { id: 'home', title: 'Home', mount: mountHome },
-  { id: 'letter-drill', title: 'Letter drill', mount: mountLetterDrill },
-  { id: 'tracing-drill', title: 'Tracing drill', needsCube: true, mount: mountTracingDrill },
-  { id: 'letter-pairs', title: 'Letter pairs', mount: mountLetterPairs },
+  { id: 'timer', title: 'Timer', needsCube: true, mount: mountTimer },
   { id: 'cube-link', title: 'Cube link', needsCube: true, mount: mountCubeLink },
   { id: 'settings', title: 'Settings', mount: mountSettings },
+  { id: 'home', title: 'Home', section: 'Blindfolded', mount: mountHome },
+  { id: 'letter-drill', title: 'Letter drill', section: 'Blindfolded', mount: mountLetterDrill },
+  {
+    id: 'tracing-drill',
+    title: 'Tracing drill',
+    section: 'Blindfolded',
+    needsCube: true,
+    mount: mountTracingDrill,
+  },
+  { id: 'letter-pairs', title: 'Letter pairs', section: 'Blindfolded', mount: mountLetterPairs },
 ]);
 
 if (!bluetoothSupported()) {
