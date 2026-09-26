@@ -686,3 +686,34 @@ label.inline {
   padding: 0.1rem 0.4rem;
   font-size: 0.72rem;
 }
+
+/* ---------------------------------------------------------------- scramble reading */
+
+.scramble .move {
+  display: inline-block;
+  margin-right: 0.55rem;
+  transition: color 0.12s ease;
+}
+
+.scramble .move.done {
+  color: var(--good);
+}
+
+.scramble .move.wrong {
+  color: var(--bad);
+  text-decoration: underline wavy;
+  text-underline-offset: 0.3em;
+}
+
+.scramble .move.next {
+  color: var(--text);
+  border-bottom: 2px solid var(--accent);
+}
+
+.scramble .move.todo {
+  color: var(--dim);
+}
+
+.scramble .move.plain {
+  color: var(--text);
+}

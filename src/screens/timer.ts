@@ -10,6 +10,8 @@ import { SOLVED, applyAlg } from '../cube/cube';
 import { randomScramble, warmScrambler } from '../cube/scramble';
 import { analyseSolve } from '../timer/cfop';
 import { SolveRun, type Phase } from '../timer/run';
+import { prefixStates, progressOf, type ScrambleProgress } from '../timer/scramble-progress';
+import { renderScramble } from '../ui/scramble-view';
 import {
   averageOf,
   bestAverage,
@@ -76,6 +78,8 @@ export function mountTimer(container: HTMLElement): () => void {
   const run = new SolveRun();
   let scramble = '';
   let scrambledState = SOLVED;
+  let scrambleStates: string[] = [SOLVED];
+  let progress: ScrambleProgress = { done: 0, wrong: false };
   let randomState = true;
   let pendingPenalty: Solve['penalty'] = 'none';
   let solves: Solve[] = [];
@@ -92,6 +96,8 @@ export function mountTimer(container: HTMLElement): () => void {
     scramble = next.alg;
     randomState = next.randomState;
     scrambledState = applyAlg(SOLVED, next.alg);
+    scrambleStates = prefixStates(next.alg);
+    progress = { done: 0, wrong: false };
     run.setScramble(scrambledState);
     render();
   }
@@ -128,6 +134,11 @@ export function mountTimer(container: HTMLElement): () => void {
     const fresh = entries.slice(lastSeenTurns).map((entry) => ({ move: entry.move, t: entry.t }));
     lastSeenTurns = entries.length;
 
+    // While the scramble is going on, follow it move by move so a wrong turn shows up at once.
+    if (run.phase === 'applying') {
+      progress = progressOf(scrambleStates, tracker.cubeFacelets(), progress.done);
+    }
+
     const now = performance.now();
     // Inspection time is spent by the time the first turn lands, so read the penalty first.
     if (run.phase === 'inspecting' && fresh.length) pendingPenalty = run.inspectionPenalty(now);
@@ -149,7 +160,8 @@ export function mountTimer(container: HTMLElement): () => void {
   }
 
   function render(): void {
-    el('scramble').textContent = scramble || '…';
+    if (!scramble) el('scramble').textContent = '…';
+    else renderScramble(el('scramble'), scramble, progress, phase() === 'applying');
     el('scramble-kind').textContent = randomState
       ? ''
       : 'Random turns — the solver would not start, so this scramble is not random state.';
@@ -168,7 +180,9 @@ export function mountTimer(container: HTMLElement): () => void {
     el('prompt').textContent = !isConnected()
       ? 'No cube connected — the timer needs it to see the scramble go on and the solve come off.'
       : phase() === 'applying'
-        ? 'The clock starts by itself on your first turn after this matches.'
+        ? progress.wrong
+          ? 'That turn is not in the scramble — undo it and the red one will clear.'
+          : `${progress.done} of ${scrambleStates.length - 1} on. Hold it white on top, green in front.`
         : phase() === 'inspecting'
           ? 'Inspection is running. Your first turn starts the clock.'
           : phase() === 'done'
