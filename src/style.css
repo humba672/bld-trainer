@@ -16,6 +16,11 @@
   box-sizing: border-box;
 }
 
+/* `hidden` has to beat any display rule that follows it. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   padding: 0 0 3rem;
@@ -765,4 +770,220 @@ label.inline {
 
 td .row-actions {
   justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------- the solving screen */
+
+.cs {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1rem;
+  min-height: 62vh;
+}
+
+.cs-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cs.solving .cs-side,
+.cs.solving .cs-scramble,
+.cs.solving .cs-preview,
+.cs.solving .prompt {
+  opacity: 0.25;
+}
+
+.cs-stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cs-stats th {
+  position: static;
+  background: none;
+  padding: 0 0.3rem 0.2rem;
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.cs-stats th:first-child {
+  text-align: left;
+}
+
+.cs-stats td {
+  padding: 0.12rem 0.3rem;
+  border-top: none;
+  text-align: right;
+}
+
+.cs-stats .stat-name {
+  color: var(--dim);
+  text-align: left;
+}
+
+.cs-times-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--dim);
+  font-size: 0.75rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+}
+
+.cs-times-head button {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+}
+
+.cs-times {
+  flex: 1;
+  max-height: none;
+}
+
+.cs-times:empty,
+.cs-times.empty {
+  border: none;
+}
+
+.cs-times table {
+  font-size: 0.82rem;
+}
+
+.cs-times td {
+  border-top: none;
+  padding: 0.1rem 0.35rem;
+}
+
+.time-row:hover {
+  background: #22262e;
+}
+
+.time-index {
+  color: var(--dim);
+  width: 2.2rem;
+}
+
+.time-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.time-flag {
+  width: 1rem;
+}
+
+.time-row .row-actions {
+  opacity: 0;
+  justify-content: flex-end;
+}
+
+.time-row:hover .row-actions {
+  opacity: 1;
+}
+
+.cs-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0.5rem;
+}
+
+.cs-scramble {
+  text-align: center;
+  font-size: 1.25rem;
+  line-height: 1.7;
+  max-width: 46rem;
+  margin: 0 auto;
+  transition: opacity 0.2s ease;
+}
+
+.cs-kind {
+  margin-top: 0.2rem;
+}
+
+.cs-middle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex: 1;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.cs-clock-area {
+  text-align: center;
+  flex: 1;
+  min-width: 280px;
+}
+
+.cs-clock {
+  font-size: 6rem;
+  margin: 0;
+}
+
+.cs-running {
+  color: var(--dim);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  min-height: 1.3rem;
+}
+
+.cs-preview {
+  flex: none;
+  transition: opacity 0.2s ease;
+}
+
+.cs-controls {
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+
+@media (max-width: 1000px) {
+  .cs {
+    grid-template-columns: 1fr;
+  }
+  .cs-clock {
+    font-size: 4rem;
+  }
+}
+
+/* stage bars */
+
+.stage-row {
+  display: grid;
+  grid-template-columns: 3rem 1fr 3.4rem 2.6rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-name {
+  color: var(--dim);
+}
+
+.stage-bar {
+  background: #22262e;
+  border-radius: 3px;
+  height: 0.55rem;
+  overflow: hidden;
+}
+
+.stage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.stage-share {
+  color: var(--dim);
+  text-align: right;
 }

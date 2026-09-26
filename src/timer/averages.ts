@@ -54,6 +54,17 @@ export function averageOf(solves: Solve[], count: number): number | null {
   return middle.reduce((a, b) => a + b, 0) / middle.length;
 }
 
+/**
+ * The mean of the last `count` solves with nothing dropped, which is how a mo3 is counted. Any
+ * DNF among them and there is no mean.
+ */
+export function meanOf(solves: Solve[], count: number): number | null {
+  if (solves.length < count) return null;
+  const window = solves.slice(-count).map(effectiveMs);
+  if (window.some((ms) => !Number.isFinite(ms))) return Number.POSITIVE_INFINITY;
+  return window.reduce((a, b) => a + b, 0) / count;
+}
+
 /** The best single, ignoring DNFs. */
 export function bestSingle(solves: Solve[]): number | null {
   const times = solves.map(effectiveMs).filter(Number.isFinite);

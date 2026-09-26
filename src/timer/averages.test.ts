@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { averageOf, bestAverage, bestSingle, effectiveMs, formatMs, type Solve } from './averages';
+import {
+  averageOf,
+  bestAverage,
+  bestSingle,
+  effectiveMs,
+  formatMs,
+  meanOf,
+  type Solve,
+} from './averages';
 
 const solve = (timeMs: number, penalty: Solve['penalty'] = 'none'): Solve => ({
   at: 0,
@@ -52,6 +60,21 @@ describe('averages', () => {
 
   it('means everything for an average of two', () => {
     expect(averageOf(times(10000, 20000), 2)).toBe(15000);
+  });
+});
+
+describe('mean of three', () => {
+  it('drops nothing', () => {
+    expect(meanOf(times(10000, 20000, 30000), 3)).toBe(20000);
+  });
+
+  it('waits for three solves', () => {
+    expect(meanOf(times(10000, 20000), 3)).toBeNull();
+  });
+
+  it('is a DNF if any of them was', () => {
+    const solves = [solve(10000), solve(20000), solve(0, 'dnf')];
+    expect(meanOf(solves, 3)).toBe(Number.POSITIVE_INFINITY);
   });
 });
 

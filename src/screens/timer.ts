@@ -1,24 +1,28 @@
 /**
- * The timer.
+ * The timer, laid out the way a speedcubing timer is: scramble across the top, the clock in the
+ * middle with the running averages under it, the session down the left, and a picture of the
+ * scramble beside it.
  *
- * No spacebar: the scramble is confirmed by the cube itself, the clock starts on your first turn
- * and stops the moment the cube is solved. Every turn is kept with the time it landed, which is
- * what lets the solve be read back afterwards.
+ * No spacebar: the scramble is confirmed by the cube reaching that state, the clock starts on your
+ * first turn and stops the moment the cube is solved. Every turn is kept with the time it landed,
+ * which is what lets the solve be read back afterwards.
  */
 
 import { SOLVED, applyAlg } from '../cube/cube';
 import { randomScramble, warmScrambler } from '../cube/scramble';
 import { analyseSolve } from '../timer/cfop';
-import { SolveRun, type Phase } from '../timer/run';
+import { SolveRun } from '../timer/run';
 import { type ScrambleProgress } from '../timer/scramble-progress';
 import { ScrambleTracker } from '../timer/scramble-tracker';
 import { renderScramble } from '../ui/scramble-view';
+import { netSvg } from '../ui/net';
 import {
   averageOf,
   bestAverage,
   bestSingle,
   effectiveMs,
   formatMs,
+  meanOf,
   type Penalty,
   type Solve,
 } from '../timer/averages';
@@ -34,25 +38,59 @@ import {
 
 const INSPECTION_MS = 15000;
 
+/** The stats column, current against best, as every timer shows it. */
+const STATS: Array<{
+  label: string;
+  of: (solves: Solve[]) => number | null;
+  best: (solves: Solve[]) => number | null;
+}> = [
+  { label: 'single', of: (s) => (s.length ? effectiveMs(s[s.length - 1]) : null), best: bestSingle },
+  { label: 'mo3', of: (s) => meanOf(s, 3), best: (s) => bestAverage(s, 3) },
+  { label: 'ao5', of: (s) => averageOf(s, 5), best: (s) => bestAverage(s, 5) },
+  { label: 'ao12', of: (s) => averageOf(s, 12), best: (s) => bestAverage(s, 12) },
+  { label: 'ao50', of: (s) => averageOf(s, 50), best: (s) => bestAverage(s, 50) },
+  { label: 'ao100', of: (s) => averageOf(s, 100), best: (s) => bestAverage(s, 100) },
+];
+
 export function mountTimer(container: HTMLElement): () => void {
   container.innerHTML = `
-    <header class="screen-head">
-      <h1>Timer</h1>
-      <div class="chips"><span id="phase" class="chip"></span></div>
-      <div class="actions">
-        <label class="inline"><input type="checkbox" id="inspection" /> Inspection</label>
-        <button id="new">New scramble</button>
-      </div>
-    </header>
+    <div class="cs">
+      <aside class="cs-side">
+        <table class="cs-stats">
+          <thead><tr><th></th><th>current</th><th>best</th></tr></thead>
+          <tbody id="stats"></tbody>
+        </table>
+        <div class="cs-times-head">
+          <span id="session-count">0 solves</span>
+          <button id="clear-session">clear</button>
+        </div>
+        <div class="table-wrap cs-times">
+          <table><tbody id="solves"></tbody></table>
+        </div>
+      </aside>
 
-    <section class="panel timer-panel">
-      <p id="scramble" class="scramble big">…</p>
-      <p id="scramble-kind" class="hint"></p>
-      <div id="clock" class="clock">0.00</div>
-      <p id="prompt" class="prompt"></p>
-    </section>
+      <main class="cs-main">
+        <p id="scramble" class="scramble cs-scramble">…</p>
+        <p id="scramble-kind" class="hint cs-kind"></p>
 
-    <div class="two-up">
+        <div class="cs-middle">
+          <div class="cs-clock-area">
+            <div id="clock" class="clock cs-clock">0.00</div>
+            <div id="running" class="cs-running"></div>
+            <p id="prompt" class="prompt"></p>
+          </div>
+          <div class="cs-preview">
+            <div id="preview"></div>
+            <div class="controls cs-controls">
+              <label class="inline"><input type="checkbox" id="inspection" /> inspection</label>
+              <button id="new">new scramble</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="two-up" id="detail" hidden>
       <section class="panel">
         <h2>This solve</h2>
         <div id="breakdown" class="details"></div>
@@ -62,15 +100,10 @@ export function mountTimer(container: HTMLElement): () => void {
         </table></div>
         <p id="unclear" class="hint"></p>
       </section>
-
       <section class="panel">
-        <h2>Session <span id="session-count" class="count"></span></h2>
-        <div id="stats" class="details"></div>
-        <div class="table-wrap"><table>
-          <thead><tr><th>#</th><th>Time</th><th>Cross</th><th>F2L</th><th>OLL</th><th>PLL</th><th></th></tr></thead>
-          <tbody id="solves"></tbody>
-        </table></div>
-        <div class="controls"><button id="clear-session">Clear the session</button></div>
+        <h2>Stages</h2>
+        <div id="stages" class="stage-bars"></div>
+        <p class="hint">Measured from the turns you made, not from anything you pressed.</p>
       </section>
     </div>`;
 
@@ -154,9 +187,7 @@ export function mountTimer(container: HTMLElement): () => void {
 
     // The solve is read in the cube's own frame, so it is fed what the cube reported - not the
     // tracker's reading of it in your hands. A slice arrives as the two face turns it really is.
-    const fresh = newEntries.flatMap((entry) =>
-      entry.wire.map((move) => ({ move, t: entry.t })),
-    );
+    const fresh = newEntries.flatMap((entry) => entry.wire.map((move) => ({ move, t: entry.t })));
 
     // While the scramble is going on, follow it move by move so a wrong turn shows up at once.
     if (run.phase === 'applying') {
@@ -190,53 +221,138 @@ export function mountTimer(container: HTMLElement): () => void {
     }
   }
 
+  function renderStats(): void {
+    const body = el('stats');
+    body.innerHTML = '';
+    for (const { label, of, best } of STATS) {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td class="stat-name">${label}</td><td>${formatMs(
+        of(solves),
+      )}</td><td>${formatMs(best(solves))}</td>`;
+      body.appendChild(row);
+    }
+  }
+
+  function renderTimes(): void {
+    el('session-count').textContent = `${solves.length} solve${solves.length === 1 ? '' : 's'}`;
+    const list = el('solves');
+    list.innerHTML = '';
+    container.querySelector('.cs-times')!.classList.toggle('empty', solves.length === 0);
+    [...solves].reverse().forEach((solve, indexFromEnd) => {
+      const number = solves.length - indexFromEnd;
+      const row = document.createElement('tr');
+      row.className = 'time-row';
+      row.innerHTML = `
+        <td class="time-index">${number}.</td>
+        <td class="time-value">${formatMs(effectiveMs(solve))}</td>
+        <td class="time-flag">${
+          solve.verified === false ? '<span class="bad" title="turns went missing">!</span>' : ''
+        }</td>
+        <td class="row-actions"></td>`;
+      const actions = row.querySelector('.row-actions')!;
+      for (const [text, penalty] of [
+        ['+2', 'plus2'],
+        ['DNF', 'dnf'],
+        ['ok', 'none'],
+      ] as Array<[string, Penalty]>) {
+        const button = document.createElement('button');
+        button.textContent = text;
+        button.className = solve.penalty === penalty ? 'toggle on' : 'toggle';
+        button.addEventListener('click', async () => {
+          solve.penalty = penalty;
+          solves = await replaceSolves(solves);
+          render();
+        });
+        actions.appendChild(button);
+      }
+      const remove = document.createElement('button');
+      remove.textContent = '×';
+      remove.title = 'Delete';
+      remove.addEventListener('click', async () => {
+        solves = await replaceSolves(solves.filter((other) => other !== solve));
+        render();
+      });
+      actions.appendChild(remove);
+      list.appendChild(row);
+    });
+  }
+
+  function renderStages(last: Solve): void {
+    const box = el('stages');
+    box.innerHTML = '';
+    if (!last.stages) return;
+    const parts: Array<[string, number]> = [
+      ['Cross', last.stages.crossMs],
+      ['F2L', last.stages.f2lMs],
+      ['OLL', last.stages.ollMs],
+      ['PLL', last.stages.pllMs],
+    ];
+    const total = parts.reduce((sum, [, ms]) => sum + ms, 0) || 1;
+    for (const [name, ms] of parts) {
+      const row = document.createElement('div');
+      row.className = 'stage-row';
+      row.innerHTML = `
+        <span class="stage-name"></span>
+        <span class="stage-bar"><span style="width:${Math.max(1, (ms / total) * 100)}%"></span></span>
+        <span class="stage-time"></span>
+        <span class="stage-share"></span>`;
+      row.querySelector('.stage-name')!.textContent = name;
+      row.querySelector('.stage-time')!.textContent = formatMs(ms);
+      row.querySelector('.stage-share')!.textContent = `${Math.round((ms / total) * 100)}%`;
+      box.appendChild(row);
+    }
+  }
+
   function render(): void {
     if (!scramble) el('scramble').textContent = '…';
     else renderScramble(el('scramble'), scramble, progress, phase() === 'applying');
+
     el('scramble-kind').textContent = randomState
       ? ''
-      : 'Random turns — the solver would not start, so this scramble is not random state.';
+      : 'random turns — the solver would not start, so this is not random state';
 
-    const phases: Record<Phase, string> = {
-      scrambling: 'Thinking of a scramble',
-      applying: 'Apply the scramble',
-      ready: 'Ready — turn when you like',
-      inspecting: 'Inspecting',
-      solving: 'Solving',
-      done: 'Done',
-    };
-    el('phase').textContent = phases[phase()];
-    el('phase').className = `chip ${phase() === 'solving' ? 'good' : ''}`;
+    el('preview').innerHTML = scramble ? netSvg(applyAlg(SOLVED, scramble), { size: 13 }) : '';
 
     el('prompt').textContent = !isConnected()
-      ? 'No cube connected — the timer needs it to see the scramble go on and the solve come off.'
+      ? 'no cube connected — the timer needs it to see the scramble go on and the solve come off'
       : phase() === 'applying'
         ? progress.wrong
-          ? 'That turn is not in the scramble — undo it and the red one will clear.'
-          : `${progress.done} of ${scrambleTracker.moveCount} on. Hold it whichever way you like.`
+          ? 'that turn is not in the scramble — undo it and the red one will clear'
+          : `${progress.done} of ${scrambleTracker.moveCount} on`
         : phase() === 'inspecting'
-          ? 'Inspection is running. Your first turn starts the clock.'
-          : phase() === 'done'
-            ? 'Next scramble is ready when you are.'
+          ? 'inspection running — your first turn starts the clock'
+          : phase() === 'ready'
+            ? 'turn when you like'
             : '';
 
     const clock = el('clock');
     if (phase() === 'solving') {
       clock.textContent = formatMs(run.elapsedMs);
-      clock.className = 'clock running';
+      clock.className = 'clock cs-clock running';
     } else if (phase() === 'inspecting') {
       const left = Math.max(0, INSPECTION_MS - (performance.now() - run.confirmedAt));
       clock.textContent = (left / 1000).toFixed(1);
-      clock.className = `clock inspecting${left <= 0 ? ' over' : ''}`;
+      clock.className = `clock cs-clock inspecting${left <= 0 ? ' over' : ''}`;
     } else {
       const last = solves[solves.length - 1];
       clock.textContent = last ? formatMs(effectiveMs(last)) : '0.00';
-      clock.className = 'clock';
+      clock.className = 'clock cs-clock';
     }
 
-    // This solve
+    // The two running averages under the clock, the way a timer shows them.
+    el('running').textContent = solves.length
+      ? `ao5 ${formatMs(averageOf(solves, 5))}     ao12 ${formatMs(averageOf(solves, 12))}`
+      : '';
+
+    // Everything but the clock steps back while you are actually solving.
+    container.querySelector('.cs')!.classList.toggle('solving', phase() === 'solving');
+
+    renderStats();
+    renderTimes();
+
     const last = solves[solves.length - 1];
-    if (last && phase() === 'done') {
+    el('detail').hidden = !last;
+    if (last) {
       rows(el('breakdown'), [
         ['Time', formatMs(effectiveMs(last))],
         [
@@ -249,10 +365,6 @@ export function mountTimer(container: HTMLElement): () => void {
         ],
         ['Moves', String(last.moveCount ?? 0)],
         ['Turns per second', (last.tps ?? 0).toFixed(2)],
-        ['Cross', formatMs(last.stages?.crossMs ?? 0)],
-        ['F2L', formatMs(last.stages?.f2lMs ?? 0)],
-        ['OLL', formatMs(last.stages?.ollMs ?? 0)],
-        ['PLL', formatMs(last.stages?.pllMs ?? 0)],
       ]);
       const body = el('pairs');
       body.innerHTML = '';
@@ -266,57 +378,8 @@ export function mountTimer(container: HTMLElement): () => void {
       el('unclear').textContent = last.unclear.length
         ? `Read with care: ${last.unclear.join('; ')}.`
         : '';
+      renderStages(last);
     }
-
-    // Session
-    el('session-count').textContent = solves.length ? `${solves.length} solves` : '';
-    rows(el('stats'), [
-      ['Best', formatMs(bestSingle(solves))],
-      ['ao5', formatMs(averageOf(solves, 5))],
-      ['ao12', formatMs(averageOf(solves, 12))],
-      ['ao100', formatMs(averageOf(solves, 100))],
-      ['Best ao5', formatMs(bestAverage(solves, 5))],
-    ]);
-
-    const list = el('solves');
-    list.innerHTML = '';
-    [...solves].reverse().forEach((solve, indexFromEnd) => {
-      const number = solves.length - indexFromEnd;
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${number}</td>
-        <td>${formatMs(effectiveMs(solve))}</td>
-        <td>${formatMs(solve.stages?.crossMs ?? null)}</td>
-        <td>${formatMs(solve.stages?.f2lMs ?? null)}</td>
-        <td>${formatMs(solve.stages?.ollMs ?? null)}</td>
-        <td>${formatMs(solve.stages?.pllMs ?? null)}</td>
-        <td class="row-actions"></td>`;
-      const actions = row.querySelector('.row-actions')!;
-      for (const [label, penalty] of [
-        ['+2', 'plus2'],
-        ['DNF', 'dnf'],
-        ['OK', 'none'],
-      ] as Array<[string, Penalty]>) {
-        const button = document.createElement('button');
-        button.textContent = label;
-        button.className = solve.penalty === penalty ? 'toggle on' : 'toggle';
-        button.addEventListener('click', async () => {
-          solve.penalty = penalty;
-          solves = await replaceSolves(solves);
-          render();
-        });
-        actions.appendChild(button);
-      }
-      const remove = document.createElement('button');
-      remove.textContent = '×';
-      remove.title = 'Delete this solve';
-      remove.addEventListener('click', async () => {
-        solves = await replaceSolves(solves.filter((other) => other !== solve));
-        render();
-      });
-      actions.appendChild(remove);
-      list.appendChild(row);
-    });
   }
 
   el('new').addEventListener('click', () => void nextScramble());
