@@ -44,10 +44,22 @@ export class SolveRun {
     return this.turns[0]?.t ?? 0;
   }
 
-  /** Elapsed time so far, or of the finished solve. */
+  /**
+   * The solve's time: first turn to last turn. This is what gets recorded, because the solve ended
+   * when you made the last turn, not when the site noticed.
+   */
   get elapsedMs(): number {
     if (this.turns.length < 2) return 0;
     return this.turns[this.turns.length - 1].t - this.turns[0].t;
+  }
+
+  /**
+   * What the clock should read at this instant, for showing while you solve. It runs on from the
+   * first turn rather than stopping at the last one, so it does not freeze between moves.
+   */
+  runningMs(now: number): number {
+    if (!this.turns.length) return 0;
+    return Math.max(0, now - this.turns[0].t);
   }
 
   /**

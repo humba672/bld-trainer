@@ -58,6 +58,26 @@ describe('when a solve starts and stops', () => {
     expect(run.elapsedMs).toBe((solution.length - 1) * 150);
   });
 
+  it('keeps running between turns, and records first turn to last', () => {
+    const run = new SolveRun();
+    run.setScramble(scrambled);
+    run.feed([], scrambled, 500);
+    run.feed([{ move: solution[0], t: 1000 }], applyAlg(scrambled, solution[0]), 1000);
+    run.feed([{ move: solution[1], t: 1500 }], applyAlg(scrambled, solution.slice(0, 2).join(' ')), 1500);
+
+    // Still 2.5s into the solve even though the last turn was at 1500.
+    expect(run.runningMs(3500)).toBe(2500);
+    // What gets recorded is the turns themselves.
+    expect(run.elapsedMs).toBe(500);
+  });
+
+  it('reads zero before the first turn', () => {
+    const run = new SolveRun();
+    run.setScramble(scrambled);
+    run.feed([], scrambled, 500);
+    expect(run.runningMs(9999)).toBe(0);
+  });
+
   it('does not stop on a turn that never scrambled anything', () => {
     const run = new SolveRun();
     run.setScramble(SOLVED); // a "scramble" that is already solved

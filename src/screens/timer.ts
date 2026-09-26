@@ -327,7 +327,7 @@ export function mountTimer(container: HTMLElement): () => void {
 
     const clock = el('clock');
     if (phase() === 'solving') {
-      clock.textContent = formatMs(run.elapsedMs);
+      clock.textContent = formatMs(run.runningMs(performance.now()));
       clock.className = 'clock cs-clock running';
     } else if (phase() === 'inspecting') {
       const left = Math.max(0, INSPECTION_MS - (performance.now() - run.confirmedAt));
@@ -395,9 +395,24 @@ export function mountTimer(container: HTMLElement): () => void {
   });
 
   const stop = onCubeChange(onCube);
-  const ticker = setInterval(() => {
-    if (phase() === 'solving' || phase() === 'inspecting') render();
-  }, 50);
+
+  /**
+   * The clock alone is redrawn every frame while it is running. Re-rendering the whole screen at
+   * that rate would rebuild the times list sixty times a second for nothing, and stutter.
+   */
+  let frame = 0;
+  const clockEl = el('clock');
+  const tick = () => {
+    if (phase() === 'solving') {
+      clockEl.textContent = formatMs(run.runningMs(performance.now()));
+    } else if (phase() === 'inspecting') {
+      const left = Math.max(0, INSPECTION_MS - (performance.now() - run.confirmedAt));
+      clockEl.textContent = (left / 1000).toFixed(1);
+      clockEl.className = `clock cs-clock inspecting${left <= 0 ? ' over' : ''}`;
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
 
   void (async () => {
     [solves, settings] = await Promise.all([loadSolves(), loadTimerSettings()]);
@@ -410,6 +425,6 @@ export function mountTimer(container: HTMLElement): () => void {
 
   return () => {
     stop();
-    clearInterval(ticker);
+    cancelAnimationFrame(frame);
   };
 }
