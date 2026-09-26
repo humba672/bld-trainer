@@ -697,9 +697,18 @@ label.inline {
 
 /* ---------------------------------------------------------------- scramble reading */
 
+/*
+ * Laid out as a flex row with a gap rather than a margin on each move. A trailing margin on the
+ * last one counts as part of the line, so the letters would sit half that margin left of centre.
+ */
+.scramble {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2rem 0.55rem;
+}
+
 .scramble .move {
-  display: inline-block;
-  margin-right: 0.55rem;
   transition: color 0.12s ease;
 }
 
