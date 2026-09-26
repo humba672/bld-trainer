@@ -649,28 +649,6 @@ dialog.pair-panel ul {
 
 /* ---------------------------------------------------------------- timer */
 
-.menu-section {
-  color: var(--dim);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 0.9rem 0.6rem 0.3rem;
-}
-
-.timer-panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 1.25rem;
-  text-align: center;
-}
-
-.scramble.big {
-  font-size: 1.15rem;
-  max-width: 44rem;
-  margin: 0 auto 0.5rem;
-}
-
 .clock {
   font-size: 4.5rem;
   font-weight: 200;
@@ -800,4 +778,273 @@ label.inline {
 
 td .row-actions {
   justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------- the solving screen */
+
+/*
+ * The clock sits in the middle of the window, not in whatever is left over beside the panels, so
+ * on a wide screen the times and the scramble picture are taken out of the flow at either edge and
+ * the middle is padded symmetrically to match. Narrower than that and they stack underneath,
+ * centred, rather than stretching across.
+ */
+.cs {
+  position: relative;
+  min-height: calc(100vh - 46px - 4.5rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.cs-side,
+.cs-preview {
+  position: absolute;
+  top: 0;
+  width: 180px;
+  transition: opacity 0.2s ease;
+}
+
+.cs-side {
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 100%;
+}
+
+.cs-preview {
+  right: 0;
+  text-align: center;
+}
+
+.cs.solving .cs-side,
+.cs.solving .cs-preview,
+.cs.solving .cs-scramble,
+.cs.solving .prompt {
+  opacity: 0.15;
+}
+
+.cs-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 210px;
+  width: 100%;
+}
+
+.cs-scramble {
+  text-align: center;
+  font-size: 1.2rem;
+  line-height: 1.8;
+  max-width: 42rem;
+  margin: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cs-kind {
+  margin: 0.35rem 0 0;
+  text-align: center;
+}
+
+.cs-clock-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 0.35rem;
+}
+
+.cs-clock {
+  font-size: 6.5rem;
+  margin: 0;
+  line-height: 1;
+}
+
+.cs-running {
+  color: var(--dim);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  min-height: 1.2rem;
+}
+
+.cs-clock-area .prompt {
+  text-align: center;
+}
+
+.cs-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.cs-stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cs-stats th {
+  position: static;
+  background: none;
+  padding: 0 0 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 400;
+  text-align: right;
+}
+
+.cs-stats th:first-child {
+  text-align: left;
+}
+
+.cs-stats td {
+  padding: 0.1rem 0;
+  border-top: none;
+  text-align: right;
+}
+
+.cs-stats .stat-name {
+  color: var(--dim);
+  text-align: left;
+}
+
+.cs-times-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--dim);
+  font-size: 0.72rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.cs-times-head button {
+  padding: 0 0.3rem;
+  font-size: 0.68rem;
+  border: none;
+}
+
+.cs-times {
+  flex: 1;
+  max-height: none;
+}
+
+.cs-times table {
+  font-size: 0.8rem;
+}
+
+.cs-times td {
+  border-top: none;
+  padding: 0.08rem 0;
+}
+
+.time-index {
+  color: #6e7688;
+  width: 1.9rem;
+}
+
+.time-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.time-flag {
+  width: 0.9rem;
+}
+
+.time-row .row-actions {
+  opacity: 0;
+  justify-content: flex-end;
+}
+
+.time-row:hover .row-actions {
+  opacity: 1;
+}
+
+.time-row:hover td {
+  color: var(--text);
+}
+
+/* Not wide enough for panels at the edges: stack them under the clock, still centred. */
+@media (max-width: 1180px) {
+  .cs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5rem;
+    min-height: 0;
+  }
+
+  .cs-side,
+  .cs-preview {
+    position: static;
+    width: 260px;
+    max-width: 100%;
+  }
+
+  .cs-main {
+    order: -2;
+    padding: 2rem 0 0;
+  }
+
+  .cs-preview {
+    order: -1;
+  }
+
+  .cs-clock-area {
+    flex: none;
+    padding: 2.5rem 0;
+  }
+
+  .cs-clock {
+    font-size: 5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .cs-clock {
+    font-size: 3.4rem;
+  }
+
+  .cs-scramble {
+    font-size: 1rem;
+  }
+}
+
+/* ---------------------------------------------------------------- stage bars */
+
+.stage-row {
+  display: grid;
+  grid-template-columns: 3rem 1fr 3.4rem 2.6rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-name {
+  color: var(--dim);
+}
+
+.stage-bar {
+  background: #22262e;
+  height: 0.5rem;
+  overflow: hidden;
+}
+
+.stage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.stage-share {
+  color: var(--dim);
+  text-align: right;
 }
