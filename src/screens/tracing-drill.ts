@@ -7,7 +7,8 @@ import { SOLVED, applyAlg } from '../cube/cube';
 import { memoFor, pairsOf } from '../bld/op';
 import { lettersIn, memoIsValid, runningStreak } from '../bld/drills';
 import { randomScramble } from '../cube/scramble';
-import { prefixStates, progressOf, type ScrambleProgress } from '../timer/scramble-progress';
+import { type ScrambleProgress } from '../timer/scramble-progress';
+import { ScrambleTracker } from '../timer/scramble-tracker';
 import { renderScramble } from '../ui/scramble-view';
 import { loadPairPanel, pairChip, wirePairChips } from '../ui/pairs-panel';
 import { addTracingAttempt, loadTracing, type TracingAttempt } from '../store';
@@ -64,7 +65,7 @@ export function mountTracingDrill(container: HTMLElement): () => void {
   let stage: Stage = 'scrambling';
   let scramble = '';
   let scrambled = SOLVED;
-  let scrambleStates: string[] = [SOLVED];
+  let scrambleTracker = new ScrambleTracker('');
   let progress: ScrambleProgress = { done: 0, wrong: false };
   let startedAt = 0;
   let attempts: TracingAttempt[] = [];
@@ -77,7 +78,7 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     const { alg, randomState } = await randomScramble();
     scramble = alg;
     scrambled = applyAlg(SOLVED, alg);
-    scrambleStates = prefixStates(alg);
+    scrambleTracker = new ScrambleTracker(alg);
     progress = { done: 0, wrong: false };
     renderScramble(el('scramble'), alg, progress, true);
     el('scramble-kind').textContent = randomState
@@ -103,16 +104,17 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     if (stage === 'scrambling') {
       box.innerHTML = '<span class="hint">…</span>';
     } else if (stage === 'applying') {
-      progress = progressOf(scrambleStates, tracker.cubeFacelets(), progress.done);
+      progress = scrambleTracker.update(tracker.cubeFacelets());
       renderScramble(el('scramble'), scramble, progress, true);
-      if (progress.done === scrambleStates.length - 1 && !progress.wrong) {
+      if (scrambleTracker.complete) {
+        scrambled = tracker.cubeFacelets();
         beginTracing();
         return;
       }
       box.innerHTML = isConnected()
         ? progress.wrong
           ? '<span class="chip bad">That turn is not in the scramble — undo it</span>'
-          : `<span class="chip">${progress.done} of ${scrambleStates.length - 1} on</span>`
+          : `<span class="chip">${progress.done} of ${scrambleTracker.moveCount} on</span>`
         : '<span class="chip bad">No cube connected</span>';
     } else {
       renderScramble(el('scramble'), scramble, progress, false);

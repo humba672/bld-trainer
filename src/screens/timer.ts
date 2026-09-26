@@ -10,7 +10,8 @@ import { SOLVED, applyAlg } from '../cube/cube';
 import { randomScramble, warmScrambler } from '../cube/scramble';
 import { analyseSolve } from '../timer/cfop';
 import { SolveRun, type Phase } from '../timer/run';
-import { prefixStates, progressOf, type ScrambleProgress } from '../timer/scramble-progress';
+import { type ScrambleProgress } from '../timer/scramble-progress';
+import { ScrambleTracker } from '../timer/scramble-tracker';
 import { renderScramble } from '../ui/scramble-view';
 import {
   averageOf,
@@ -78,8 +79,9 @@ export function mountTimer(container: HTMLElement): () => void {
   const run = new SolveRun();
   let scramble = '';
   let scrambledState = SOLVED;
-  let scrambleStates: string[] = [SOLVED];
+  let scrambleTracker = new ScrambleTracker('');
   let progress: ScrambleProgress = { done: 0, wrong: false };
+  let physicalMoves = 0;
   let randomState = true;
   let pendingPenalty: Solve['penalty'] = 'none';
   let solves: Solve[] = [];
@@ -96,8 +98,9 @@ export function mountTimer(container: HTMLElement): () => void {
     scramble = next.alg;
     randomState = next.randomState;
     scrambledState = applyAlg(SOLVED, next.alg);
-    scrambleStates = prefixStates(next.alg);
+    scrambleTracker = new ScrambleTracker(next.alg);
     progress = { done: 0, wrong: false };
+    physicalMoves = 0;
     run.setScramble(scrambledState);
     render();
   }
@@ -120,8 +123,9 @@ export function mountTimer(container: HTMLElement): () => void {
         recognitionMs,
         executionMs,
       })),
-      moveCount: analysis.moveCount,
-      tps: analysis.tps,
+      // Counted as you turned them: a slice is one move, not the two the cube reports.
+      moveCount: physicalMoves,
+      tps: analysis.timeMs > 0 ? (physicalMoves * 1000) / analysis.timeMs : 0,
     };
     solves = await addSolve(solve);
     render();
@@ -131,19 +135,32 @@ export function mountTimer(container: HTMLElement): () => void {
   /** Everything that happens as you turn the cube. */
   function onCube(): void {
     const entries = tracker.entries;
-    const fresh = entries.slice(lastSeenTurns).map((entry) => ({ move: entry.move, t: entry.t }));
+    const newEntries = entries.slice(lastSeenTurns);
     lastSeenTurns = entries.length;
+
+    // The solve is read in the cube's own frame, so it is fed what the cube reported - not the
+    // tracker's reading of it in your hands. A slice arrives as the two face turns it really is.
+    const fresh = newEntries.flatMap((entry) =>
+      entry.wire.map((move) => ({ move, t: entry.t })),
+    );
 
     // While the scramble is going on, follow it move by move so a wrong turn shows up at once.
     if (run.phase === 'applying') {
-      progress = progressOf(scrambleStates, tracker.cubeFacelets(), progress.done);
+      progress = scrambleTracker.update(tracker.cubeFacelets());
+      if (scrambleTracker.complete) {
+        // Whatever way you were holding it, this is the state it is really in.
+        scrambledState = tracker.cubeFacelets();
+        run.setScramble(scrambledState);
+      }
     }
 
     const now = performance.now();
     // Inspection time is spent by the time the first turn lands, so read the penalty first.
     if (run.phase === 'inspecting' && fresh.length) pendingPenalty = run.inspectionPenalty(now);
 
-    if (run.feed(fresh, tracker.cubeFacelets(), now)) void finishSolve();
+    const ended = run.feed(fresh, tracker.cubeFacelets(), now);
+    if (run.phase === 'solving' || ended) physicalMoves += newEntries.length;
+    if (ended) void finishSolve();
     render();
   }
 
@@ -182,7 +199,7 @@ export function mountTimer(container: HTMLElement): () => void {
       : phase() === 'applying'
         ? progress.wrong
           ? 'That turn is not in the scramble — undo it and the red one will clear.'
-          : `${progress.done} of ${scrambleStates.length - 1} on. Hold it white on top, green in front.`
+          : `${progress.done} of ${scrambleTracker.moveCount} on. Hold it whichever way you like.`
         : phase() === 'inspecting'
           ? 'Inspection is running. Your first turn starts the clock.'
           : phase() === 'done'
