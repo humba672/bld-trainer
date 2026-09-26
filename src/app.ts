@@ -5,6 +5,7 @@
 
 import { mountCubeLink } from './screens/cube-link';
 import { mountTimer } from './screens/timer';
+import { mountF2L } from './screens/f2l';
 import { mountHome } from './screens/home';
 import { mountLetterDrill } from './screens/letter-drill';
 import { mountLetterPairs } from './screens/letter-pairs';
@@ -15,6 +16,7 @@ import { registerScreens, startShell } from './shell';
 
 registerScreens([
   { id: 'timer', title: 'Timer', needsCube: true, mount: mountTimer },
+  { id: 'f2l', title: 'F2L', needsCube: true, mount: mountF2L },
   { id: 'cube-link', title: 'Cube link', needsCube: true, mount: mountCubeLink },
   { id: 'settings', title: 'Settings', mount: mountSettings },
   { id: 'home', title: 'Home', section: 'Blindfolded', mount: mountHome },

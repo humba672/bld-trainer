@@ -52,6 +52,16 @@ export const lastLayerOriented = (state: string): boolean =>
 
 export const isSolved = (state: string): boolean => state === SOLVED;
 
+/** Cross and all four slots. What the last layer is doing has nothing to do with it. */
+export const f2lComplete = (state: string): boolean =>
+  crossSolved(state) && SLOT_NAMES.every((slot) => slotSolved(state, slot));
+
+/** Which slot still needs filling, if exactly one does. */
+export function openSlot(state: string): SlotName | null {
+  const open = SLOT_NAMES.filter((slot) => !slotSolved(state, slot));
+  return open.length === 1 ? open[0] : null;
+}
+
 // ---------------------------------------------------------------- finding a pair
 
 /** All eight corner places, each listed clockwise from the sticker that is white when solved. */

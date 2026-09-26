@@ -9,7 +9,7 @@
  * turns say which one you are using.
  */
 
-import { ORIENTATIONS, faceMapOf, type Face } from '../cube/cube';
+import { ORIENTATIONS, SOLVED, faceMapOf, type Face } from '../cube/cube';
 import { prefixStates, progressOf, type ScrambleProgress } from './scramble-progress';
 
 const relabel = (alg: string, map: Record<Face, Face>): string =>
@@ -34,14 +34,14 @@ export class ScrambleTracker {
   private done = 0;
   private wrong = false;
 
-  constructor(scramble: string) {
+  constructor(scramble: string, from: string = SOLVED) {
     this.moveCount = scramble.trim().split(/\s+/).filter(Boolean).length;
     this.variants = ORIENTATIONS.map((holding) => {
       const map = faceMapOf(holding);
       const inverse = Object.fromEntries(
         Object.entries(map).map(([from, to]) => [to, from]),
       ) as Record<Face, Face>;
-      return { holding, states: prefixStates(relabel(scramble, inverse)) };
+      return { holding, states: prefixStates(relabel(scramble, inverse), from) };
     });
     this.candidates = this.variants;
   }

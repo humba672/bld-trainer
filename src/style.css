@@ -717,3 +717,52 @@ label.inline {
 .scramble .move.plain {
   color: var(--text);
 }
+
+/* ---------------------------------------------------------------- f2l */
+
+.drill-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+
+.drill-case {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.drill-case #case-picture {
+  width: 200px;
+  flex: none;
+}
+
+.drill-what {
+  flex: 1;
+  min-width: 260px;
+}
+
+.drill-what .scramble {
+  font-size: 1rem;
+  margin: 0 0 0.35rem;
+}
+
+.drill-panel .clock {
+  font-size: 3.2rem;
+  text-align: center;
+}
+
+.case-cell {
+  width: 92px;
+  padding: 0.2rem 0.4rem;
+}
+
+.case-cell svg {
+  display: block;
+}
+
+td .row-actions {
+  justify-content: flex-end;
+}

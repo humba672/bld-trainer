@@ -15,10 +15,15 @@ export interface ScrambleProgress {
   wrong: boolean;
 }
 
-/** The state after none of the scramble, after one move, after two, and so on. */
-export function prefixStates(scramble: string): string[] {
+/**
+ * The state after none of the scramble, after one move, after two, and so on.
+ *
+ * `from` is where the cube is starting: solved for a scramble, but the driller sets a case up from
+ * wherever the last rep left the cube.
+ */
+export function prefixStates(scramble: string, from: string = SOLVED): string[] {
   const moves = scramble.trim().split(/\s+/).filter(Boolean);
-  const states = [SOLVED];
+  const states = [from];
   for (const move of moves) states.push(applyAlg(states[states.length - 1], move));
   return states;
 }

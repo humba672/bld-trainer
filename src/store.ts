@@ -7,6 +7,7 @@
 
 import { del, get, keys, set } from 'idb-keyval';
 import type { Solve } from './timer/averages';
+import type { DrillAttempt } from './timer/f2l-stats';
 
 export interface StickerStat {
   /** Times asked, times right, and the best and total time in milliseconds. */
@@ -46,6 +47,7 @@ const KEY = {
   progress: 'progress',
   solves: 'solves',
   timerSettings: 'timer-settings',
+  f2lDrills: 'f2l-drills',
 } as const;
 
 export const loadMac = () => get<string>(KEY.mac);
@@ -102,6 +104,20 @@ export async function replaceSolves(solves: Solve[]): Promise<Solve[]> {
   await set(KEY.solves, solves);
   return solves;
 }
+
+export const loadDrills = async (): Promise<DrillAttempt[]> =>
+  (await get<DrillAttempt[]>(KEY.f2lDrills)) ?? [];
+
+export async function addDrill(attempt: DrillAttempt): Promise<DrillAttempt[]> {
+  const all = [...(await loadDrills()), attempt];
+  await set(KEY.f2lDrills, all);
+  return all;
+}
+
+export const replaceDrills = async (drills: DrillAttempt[]): Promise<DrillAttempt[]> => {
+  await set(KEY.f2lDrills, drills);
+  return drills;
+};
 
 export interface TimerSettings {
   /** WCA-style 15 second inspection before the clock starts. */
