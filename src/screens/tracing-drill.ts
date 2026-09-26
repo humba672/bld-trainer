@@ -6,7 +6,7 @@
 import { SOLVED, applyAlg } from '../cube/cube';
 import { memoFor, pairsOf } from '../bld/op';
 import { lettersIn, memoIsValid, runningStreak } from '../bld/drills';
-import { randomScramble } from '../bld/scramble';
+import { randomScramble } from '../cube/scramble';
 import { loadPairPanel, pairChip, wirePairChips } from '../ui/pairs-panel';
 import { addTracingAttempt, loadTracing, type TracingAttempt } from '../store';
 import { isConnected, onCubeChange, tracker } from '../session';
@@ -76,7 +76,7 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     el('scramble').textContent = alg;
     el('scramble-kind').textContent = randomState
       ? 'Random state.'
-      : '25 random turns. The random-state scrambler will not start in this browser, so this is close to random but not exactly it.';
+      : '25 random turns — the solver would not start, so this is close to random but not exactly it.';
     stage = 'applying';
     startedAt = 0;
     render();
