@@ -8,7 +8,7 @@
  * whatever direction you happened to be facing.
  */
 
-import { SOLVED, applyAlg, applyMove } from '../cube/cube';
+import { SOLVED, applyAlg, applyMove, faceMapOf, type Face } from '../cube/cube';
 
 export type SlotName = 'FR' | 'FL' | 'BL' | 'BR';
 export const SLOT_NAMES: SlotName[] = ['FR', 'FL', 'BL', 'BR'];
@@ -104,7 +104,22 @@ function findPiece(state: string, homePlace: number[], places: number[][]): Plac
 }
 
 /** Rotations that bring each slot round to the front-right, so one case list covers all four. */
-const TO_FRONT_RIGHT: Record<SlotName, string> = { FR: '', FL: "y'", BL: 'y2', BR: 'y' };
+export const TO_FRONT_RIGHT: Record<SlotName, string> = { FR: '', FL: "y'", BL: 'y2', BR: 'y' };
+
+/**
+ * The same cube seen as though this slot were the front-right one.
+ *
+ * Turning the state is only half of it. Turn a cube and the front-left pair ends up in the
+ * front-right place, but it is still the front-left pair - its colours say so, and everything here
+ * finds pieces by colour. So the colours are renamed to match, which is what makes the four slots
+ * genuinely interchangeable rather than only looking it.
+ */
+export function viewFromSlot(state: string, slot: SlotName): string {
+  const rotation = TO_FRONT_RIGHT[slot];
+  if (!rotation) return state;
+  const rename = faceMapOf(rotation);
+  return [...applyAlg(state, rotation)].map((colour) => rename[colour as Face]).join('');
+}
 
 export interface F2LCase {
   key: string;
@@ -120,7 +135,7 @@ export interface F2LCase {
  * cube happens to be sitting.
  */
 export function f2lCaseOf(state: string, slot: SlotName): F2LCase {
-  const facing = TO_FRONT_RIGHT[slot] ? applyAlg(state, TO_FRONT_RIGHT[slot]) : state;
+  const facing = viewFromSlot(state, slot);
 
   let best: string | null = null;
   let turned = facing;

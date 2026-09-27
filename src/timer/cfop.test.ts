@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SOLVED, applyAlg, invertAlg } from '../cube/cube';
+import { SOLVED, applyAlg, faceMapOf, invertAlg } from '../cube/cube';
 import {
   CASE_MOVES,
   SLOT_NAMES,
@@ -85,6 +85,25 @@ describe('the 41 F2L cases', () => {
     const key = f2lCaseOf(applyAlg(SOLVED, 'U'), 'FR').key;
     expect(key).toBeTruthy();
     expect(cases.has(key)).toBe(false);
+  });
+
+  it('reads one case as the same case in any of the four slots', () => {
+    // The point of a case list: the same thing in the back-left slot is the same case. Set each
+    // one up in each slot by relabelling its setup, and the reading must not change.
+    const intoSlot: Record<string, string> = { FR: '', FL: 'y', BL: 'y2', BR: "y'" };
+    for (const entry of [...cases.values()].filter((c) => !c.solved).slice(0, 12)) {
+      for (const slot of SLOT_NAMES) {
+        const map = faceMapOf(intoSlot[slot]);
+        const setup = intoSlot[slot]
+          ? entry.setup
+              .split(' ')
+              .map((move) => map[move[0] as 'U'] + move.slice(1))
+              .join(' ')
+          : entry.setup;
+        const state = applyAlg(SOLVED, setup);
+        expect(f2lCaseOf(state, slot).key, `${entry.key} set up in ${slot}`).toBe(entry.key);
+      }
+    }
   });
 
   it('reads the same case whichever slot it is in, and whatever the free layer is doing', () => {
