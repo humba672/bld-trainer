@@ -11,6 +11,11 @@ export type Penalty = 'none' | 'plus2' | 'dnf';
 export interface Solve {
   at: number;
   scramble: string;
+  /**
+   * The cube as it stood when the solve began. Held a different way round, the same scramble lands
+   * in a different state, so this is what any later reading of the solve has to start from.
+   */
+  startState?: string;
   /** False if the scramble was random turns because the solver would not start. */
   randomState: boolean;
   /** First turn to last turn. */

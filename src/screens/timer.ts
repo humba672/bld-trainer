@@ -155,6 +155,7 @@ export function mountTimer(container: HTMLElement): () => void {
     const solve: Solve = {
       at: Date.now(),
       scramble,
+      startState: scrambledState,
       randomState,
       timeMs: analysis.timeMs,
       penalty: pendingPenalty,
@@ -316,7 +317,7 @@ export function mountTimer(container: HTMLElement): () => void {
       : phase() === 'applying'
         ? progress.wrong
           ? 'that turn is not in the scramble — undo it and the red one will clear'
-          : `${progress.done} of ${scrambleTracker.moveCount} on`
+          : ''
         : phase() === 'inspecting'
           ? 'inspection running — your first turn starts the clock'
           : phase() === 'ready'
