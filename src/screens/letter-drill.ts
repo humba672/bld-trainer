@@ -5,7 +5,7 @@
 
 import { SOLVED } from '../cube/cube';
 import { CORNER_STICKER, EDGE_STICKER, LETTERS } from '../bld/speffz';
-import { netSvg } from '../ui/net';
+import { Cube3D } from '../ui/cube3d';
 import { TARGET_MS, fluency, weightOf } from '../bld/drills';
 import {
   loadLetterStats,
@@ -31,11 +31,13 @@ export function mountLetterDrill(container: HTMLElement): () => void {
     <header class="screen-head"><h1>Letter drill</h1></header>
     <p class="hint">
       One sticker is picked out below. Type its Speffz letter, or press it on the keypad. Under
-      ${TARGET_MS / 1000} seconds counts as known, and the stickers you are slowest on come back most.
+      ${TARGET_MS / 1000} seconds counts as known, and the stickers you are slowest on come back
+      most. The cube turns itself so the sticker asked about is always facing you; drag it to look
+      round, and it will turn back on the next question.
     </p>
     <div class="two-up">
       <section class="panel">
-        <div id="net"></div>
+        <div id="cube" class="cube-stage"></div>
         <p id="verdict" class="verdict">&nbsp;</p>
         <div id="keypad" class="keypad"></div>
       </section>
@@ -51,6 +53,9 @@ export function mountLetterDrill(container: HTMLElement): () => void {
     </div>`;
 
   const el = <T extends HTMLElement>(id: string) => container.querySelector<T>(`#${id}`)!;
+
+  const cube = new Cube3D(el('cube'), { size: 190 });
+  cube.paint(SOLVED);
 
   let stats: LetterStats = {};
   let question: Question | null = null;
@@ -74,7 +79,8 @@ export function mountLetterDrill(container: HTMLElement): () => void {
       }
     }
     question = { ...picked, askedAt: performance.now() };
-    el('net').innerHTML = netSvg(SOLVED, { highlight: picked.index, size: 26 });
+    cube.paint(SOLVED, { highlight: picked.index });
+    cube.lookAt(picked.index);
     renderStats();
   }
 
@@ -161,6 +167,7 @@ export function mountLetterDrill(container: HTMLElement): () => void {
 
   return () => {
     stopped = true;
+    cube.destroy();
     document.removeEventListener('keydown', onKey);
   };
 }

@@ -1,18 +1,15 @@
 /**
  * A flat net of the cube, drawn as SVG, with an optional sticker singled out.
  *
- * The letter drill needs to point at one sticker, which a 3D view cannot do clearly, so the site
- * draws its own net. The facelet order is the same one used everywhere else: U, R, F, D, L, B.
+ * Where every sticker has to be seen at once, or where the picture is too small for a solid to
+ * read - the timer's scramble preview, the thumbnails in the F2L table - a net says more than a
+ * cube does. The facelet order is the same one used everywhere else: U, R, F, D, L, B.
  */
 
-const COLOURS: Record<string, string> = {
-  U: '#f7f7f7',
-  R: '#e03a3a',
-  F: '#2fb14a',
-  D: '#f2d02c',
-  L: '#f08c2e',
-  B: '#2b6fe0',
-};
+import { BLANK_HEX, COLOUR_HEX } from '../cube/colours';
+import type { Face } from '../cube/cube';
+
+
 
 /** Where each face sits in the net, in cells. */
 const FACE_ORIGIN: Record<number, [number, number]> = {
@@ -46,7 +43,7 @@ export function netSvg(facelets: string, options: NetOptions = {}): string {
     const row = Math.floor((index % 9) / 3);
     const x = (fx + col) * cell;
     const y = (fy + row) * cell;
-    const colour = options.blank ? '#3a4150' : COLOURS[facelets[index]] ?? '#3a4150';
+    const colour = options.blank ? BLANK_HEX : COLOUR_HEX[facelets[index] as Face] ?? BLANK_HEX;
     squares += `<rect x="${x + gap}" y="${y + gap}" width="${cell - gap * 2}" height="${
       cell - gap * 2
     }" rx="2" fill="${colour}" stroke="#14161a" stroke-width="1" />`;

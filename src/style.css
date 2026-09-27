@@ -1103,3 +1103,73 @@ td.alg {
   font-size: 0.78rem;
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- the cube as a solid */
+
+/* Perspective makes the cube draw bigger than its box, so the padding is the room it needs rather
+   than decoration: without it the near corner lands on top of whatever comes next. */
+.cube-stage {
+  display: flex;
+  justify-content: center;
+  padding: 1.6rem 0 2.6rem;
+}
+
+.cube3d {
+  position: relative;
+  /* The drag is the control, so the browser must not take the gesture for a scroll. */
+  touch-action: none;
+}
+
+.cube3d.turnable {
+  cursor: grab;
+}
+
+.cube3d.turnable:active {
+  cursor: grabbing;
+}
+
+.cube3d-cube {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.cube3d-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3.5%;
+  padding: 3.5%;
+  background: #0b0c0f;
+  border-radius: 6%;
+  /* A face turned away is behind the three you can see; without this the browser is free to paint
+     it over them. */
+  backface-visibility: hidden;
+}
+
+.cube3d-sticker {
+  display: block;
+  border-radius: 12%;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 35%);
+}
+
+/* The sticker being asked about. A single colour will not do: the accent is all but invisible on
+   the blue face, white vanishes on white. A dark ring inside a light one reads on all six, and
+   lifting it off the face says which one is meant even at a glance. */
+.cube3d-sticker.on {
+  box-shadow:
+    inset 0 0 0 3px #0b0c0f,
+    inset 0 0 0 6px #fff;
+  transform: translateZ(7px) scale(1.04);
+  animation: sticker-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes sticker-pulse {
+  50% {
+    box-shadow:
+      inset 0 0 0 3px #0b0c0f,
+      inset 0 0 0 6px rgb(255 255 255 / 35%);
+  }
+}
