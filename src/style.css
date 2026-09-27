@@ -1173,3 +1173,128 @@ td.alg {
       inset 0 0 0 6px rgb(255 255 255 / 35%);
   }
 }
+
+/* ---------------------------------------------------------------- the F2L case list */
+
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.8rem;
+}
+
+.case-card {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: 8px;
+}
+
+.case-art {
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.case-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.case-alg {
+  margin: 0 0 0.25rem;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+}
+
+.case-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+}
+
+.case-setup {
+  margin: 0.3rem 0 0.45rem;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.74rem;
+  color: var(--dim);
+}
+
+.case-drill {
+  font-size: 0.78rem;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.legend-key {
+  padding: 0.15rem 0.5rem;
+  border-left: 4px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  font-size: 0.76rem;
+}
+
+/* How you are doing, from quickest to slowest. The band is a border rather than a wash, so the
+   cube in the picture keeps its own colours - a tinted card would fight the stickers. */
+.band-quick {
+  border-left-color: #3fb950;
+}
+
+.band-fine {
+  border-left-color: #7bc96f;
+}
+
+.band-middling {
+  border-left-color: #d4a72c;
+}
+
+.band-slow {
+  border-left-color: #f0883e;
+}
+
+.band-worst {
+  border-left-color: #f0623a;
+}
+
+.band-thin,
+.band-unseen {
+  border-left-color: #3a4150;
+}
+
+.case-card.band-quick .case-band {
+  color: #3fb950;
+}
+
+.case-card.band-fine .case-band {
+  color: #7bc96f;
+}
+
+.case-card.band-middling .case-band {
+  color: #d4a72c;
+}
+
+.case-card.band-slow .case-band {
+  color: #f0883e;
+}
+
+.case-card.band-worst .case-band {
+  color: #f0623a;
+}
+
+.case-card.band-thin .case-band,
+.case-card.band-unseen .case-band {
+  color: var(--dim);
+}

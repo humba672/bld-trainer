@@ -22,9 +22,18 @@ export function registerScreens(list: Screen[]): void {
   screens.push(...list);
 }
 
+/**
+ * The screen a link asks for. Anything after a question mark is that screen's own business - the
+ * case list points at the driller with a case in mind - so it is not part of the name.
+ */
 function currentId(): string {
-  const wanted = location.hash.replace('#', '');
+  const wanted = location.hash.replace('#', '').split('?')[0];
   return screens.some((screen) => screen.id === wanted) ? wanted : screens[0].id;
+}
+
+/** What one screen asked the next for, as `#screen?name=value`. */
+export function screenParams(): URLSearchParams {
+  return new URLSearchParams(location.hash.replace('#', '').split('?')[1] ?? '');
 }
 
 export function startShell(root: HTMLElement): void {

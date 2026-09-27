@@ -19,10 +19,11 @@ import { formatMs } from '../timer/averages';
 import { ScrambleTracker } from '../timer/scramble-tracker';
 import type { ScrambleProgress } from '../timer/scramble-progress';
 import { renderScramble } from '../ui/scramble-view';
-import { netSvg } from '../ui/net';
+import { isoSvg } from '../ui/iso';
 import solutionData from '../data/f2l-solutions.json';
-import { solutionFor } from '../timer/f2l-solve';
+import { DISPLAY_ROTATION, gripSentence, inSolverNotation, solutionFor } from '../timer/f2l-solve';
 import { declareSolved, isConnected, onCubeChange, tracker } from '../session';
+import { screenParams } from '../shell';
 import { addDrill, loadDrills, loadSolves, replaceDrills, solvesReread } from '../store';
 import type { DrillAttempt } from '../timer/f2l-stats';
 import type { Solve } from '../timer/averages';
@@ -66,18 +67,16 @@ export function mountF2L(container: HTMLElement): () => void {
 
     <section class="panel drill-panel">
       <div class="drill-case">
-        <div id="case-picture"></div>
+        <div id="case-picture" class="case-art"></div>
         <div class="drill-what">
           <p id="setup" class="scramble"></p>
+          <p id="grip" class="hint"></p>
           <div id="drill-clock" class="clock">0.00</div>
           <p id="drill-prompt" class="prompt"></p>
           <div class="controls">
             <button id="show-solution">show the solution</button>
             <span id="solution" class="solution" hidden></span>
-            <span id="solution-note" class="hint" hidden>
-              written for white on top, green in front — turn a couple more and I will know how you
-              are holding it
-            </span>
+            <span id="solution-note" class="hint" hidden></span>
             <button id="solved" hidden title="Only if it really is: this tells the cube so too">
               My cube is solved
             </button>
@@ -124,11 +123,22 @@ export function mountF2L(container: HTMLElement): () => void {
   let drills: DrillAttempt[] = [];
   let stats: CaseStat[] = [];
   let showSolution = false;
+  const asked = screenParams().get('case');
+  let requestedKey: string | null = asked && isStandard(asked) ? asked : null;
   /** The algorithm for the case actually in front of you, in the turns you would make. */
   let liveSolution: string | null = null;
   let knowsHolding = false;
 
   function chooseNext(): void {
+    // A case asked for by name - from the case list - is drilled once, and then the driller goes
+    // back to picking for itself.
+    if (requestedKey) {
+      targetKey = requestedKey;
+      requestedKey = null;
+      beginSetup();
+      return;
+    }
+
     const mode = el<HTMLSelectElement>('mode').value;
     targetKey =
       mode === 'random'
@@ -238,12 +248,18 @@ export function mountF2L(container: HTMLElement): () => void {
     };
     el('phase').textContent = phases[phase];
     el('phase').className = `chip ${phase === 'drilling' ? 'good' : ''}`;
+    el('grip').textContent = `Pictured and written for ${gripSentence()}.`;
 
-    el('case-picture').innerHTML = netSvg(stateOfCase(targetKey), { size: 16 });
+    // Pictured and written in the one grip the algorithms assume, so the setup, the picture and
+    // the solution all say the same thing. The tracker follows the turns however you hold the cube,
+    // so this is a convention for reading rather than an instruction you have to obey.
+    el('case-picture').innerHTML = isoSvg(
+      applyAlg(stateOfCase(targetKey), DISPLAY_ROTATION),
+      { cell: 26 },
+    );
 
     const setup = CASES.get(targetKey)!.setup;
-    if (phase === 'setting-up') renderScramble(el('setup'), setup, progress, true);
-    else renderScramble(el('setup'), setup, progress, false);
+    renderScramble(el('setup'), inSolverNotation(setup), progress, phase === 'setting-up');
 
     el('drill-prompt').textContent = !isConnected()
       ? 'No cube connected — the driller needs it to see the case go on and come off.'
@@ -265,7 +281,14 @@ export function mountF2L(container: HTMLElement): () => void {
     const shown = liveSolution ?? algFor(targetKey);
     const turns = shown.split(' ').filter(Boolean).length;
     solution.textContent = `${shown}  (${turns})`;
-    el('solution-note').hidden = !showSolution || !liveSolution || knowsHolding;
+    // Once the setup has told us which way round you are holding the cube, the solution is written
+    // in the turns your own hands would make and needs no explaining. Until then it is in the
+    // cube's own frame, and saying which frame that is matters more than the moves do.
+    const note = el('solution-note');
+    note.hidden = !showSolution;
+    note.textContent = knowsHolding
+      ? 'in the turns you would make, the way you are holding it'
+      : `for white on top, green facing you — turn a few more and I will know how you are holding it`;
     el('show-solution').hidden = showSolution;
 
     const clock = el('drill-clock');
@@ -310,7 +333,10 @@ export function mountF2L(container: HTMLElement): () => void {
         <td>${stat.perSolve.toFixed(2)}</td>
         <td>${stat.samples}${stat.ranked ? '' : ` of ${ENOUGH_SAMPLES}`}</td>
         <td class="row-actions"></td>`;
-      row.querySelector('.case-cell')!.innerHTML = netSvg(stateOfCase(stat.caseKey), { size: 7 });
+      row.querySelector('.case-cell')!.innerHTML = isoSvg(
+        applyAlg(stateOfCase(stat.caseKey), DISPLAY_ROTATION),
+        { cell: 7 },
+      );
       const drillThis = document.createElement('button');
       drillThis.textContent = 'Drill';
       drillThis.addEventListener('click', () => {
