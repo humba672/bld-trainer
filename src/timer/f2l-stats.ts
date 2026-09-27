@@ -61,7 +61,18 @@ function median(values: number[]): number {
  * Only solves the cube agreed with are counted: a solve whose turns did not add up is not evidence
  * about anything.
  */
+export interface F2LStats {
+  cases: CaseStat[];
+  /** What a case costs you when nothing is wrong with it: the middle of all your pair times. */
+  typicalMs: number;
+}
+
+/** The ranking on its own, for callers that do not care what it was measured against. */
 export function f2lStats(solves: Solve[], drills: DrillAttempt[]): CaseStat[] {
+  return f2lStatsWithTypical(solves, drills).cases;
+}
+
+export function f2lStatsWithTypical(solves: Solve[], drills: DrillAttempt[]): F2LStats {
   const trusted = solves.filter((solve) => solve.verified !== false && solve.penalty !== 'dnf');
   const solveCount = trusted.length;
 
@@ -113,11 +124,33 @@ export function f2lStats(solves: Solve[], drills: DrillAttempt[]): CaseStat[] {
 
   // Worst first, but only among the cases there is enough of; the rest trail behind by how little
   // is known about them, so the driller has something to aim at.
-  return stats.sort((a, b) => {
+  stats.sort((a, b) => {
     if (a.ranked !== b.ranked) return a.ranked ? -1 : 1;
     if (a.ranked) return b.lossPerSolveMs - a.lossPerSolveMs;
     return a.samples - b.samples;
   });
+  return { cases: stats, typicalMs: typical };
+}
+
+/**
+ * How a case is doing, as a word a screen can colour by.
+ *
+ * Against your own typical case, not against a clock: a case is worth drilling because it is slow
+ * for you, and what counts as slow moves as you get quicker. Cases without the reps to say are
+ * left alone rather than guessed at - one fumbled rep would paint a case red for weeks.
+ */
+export type SpeedBand = 'unseen' | 'thin' | 'quick' | 'fine' | 'middling' | 'slow' | 'worst';
+
+export function speedBand(stat: CaseStat | undefined, typicalMs: number): SpeedBand {
+  if (!stat || stat.samples === 0) return 'unseen';
+  if (!stat.ranked || typicalMs <= 0) return 'thin';
+
+  const ratio = stat.meanExecutionMs / typicalMs;
+  if (ratio <= 0.8) return 'quick';
+  if (ratio <= 1) return 'fine';
+  if (ratio <= 1.25) return 'middling';
+  if (ratio <= 1.6) return 'slow';
+  return 'worst';
 }
 
 /**
