@@ -21,7 +21,8 @@ import type { ScrambleProgress } from '../timer/scramble-progress';
 import { renderScramble } from '../ui/scramble-view';
 import { isoSvg } from '../ui/iso';
 import solutionData from '../data/f2l-solutions.json';
-import { DISPLAY_ROTATION, gripSentence, inSolverNotation, solutionFor } from '../timer/f2l-solve';
+import { DISPLAY_ROTATION, executionFor, gripSentence, inSolverNotation } from '../timer/f2l-solve';
+import { bestExecution, writtenOut, type Execution } from '../timer/execution';
 import { declareSolved, isConnected, onCubeChange, tracker } from '../session';
 import { screenParams } from '../shell';
 import { addDrill, loadDrills, loadSolves, replaceDrills, solvesReread } from '../store';
@@ -34,8 +35,12 @@ const CASES = enumerateF2LCases();
 const DRILLABLE = [...CASES.values()].filter((entry) => !entry.solved);
 
 /** The shortest algorithm for each case, worked out offline. See scripts/build-f2l-solutions.mjs. */
-const SOLUTIONS = solutionData as Record<string, { alg: string; length: number }>;
+const SOLUTIONS = solutionData as Record<
+  string,
+  { alg: string; length: number; options: string[] }
+>;
 const algFor = (key: string): string => SOLUTIONS[key]?.alg ?? '—';
+const optionsFor = (key: string): string[] => SOLUTIONS[key]?.options ?? [];
 
 /**
  * The 41 cases are the ones where the pair is in the free layer or already in its slot. Part way
@@ -125,8 +130,8 @@ export function mountF2L(container: HTMLElement): () => void {
   let showSolution = false;
   const asked = screenParams().get('case');
   let requestedKey: string | null = asked && isStandard(asked) ? asked : null;
-  /** The algorithm for the case actually in front of you, in the turns you would make. */
-  let liveSolution: string | null = null;
+  /** The nicest way to do the case actually in front of you, in the turns you would make. */
+  let liveSolution: Execution | null = null;
   let knowsHolding = false;
 
   function chooseNext(): void {
@@ -203,7 +208,7 @@ export function mountF2L(container: HTMLElement): () => void {
         // Worked out now, while the case is still on the cube: which slot it landed in and which
         // way round you are holding it both change what you would actually turn.
         knowsHolding = setupTracker.holding !== '';
-        liveSolution = slot ? solutionFor(state, slot, setupTracker.holding) : null;
+        liveSolution = slot ? executionFor(state, slot, setupTracker.holding) : null;
         phase = 'ready';
       }
       render();
@@ -278,17 +283,19 @@ export function mountF2L(container: HTMLElement): () => void {
 
     const solution = el('solution');
     solution.hidden = !showSolution;
-    const shown = liveSolution ?? algFor(targetKey);
-    const turns = shown.split(' ').filter(Boolean).length;
-    solution.textContent = `${shown}  (${turns})`;
+    const shown = liveSolution ?? bestExecution(optionsFor(targetKey), DISPLAY_ROTATION);
+    solution.textContent = `${writtenOut(shown)}  (${shown.length} moves${
+      shown.regrips ? ', one regrip' : ''
+    })`;
     // Once the setup has told us which way round you are holding the cube, the solution is written
-    // in the turns your own hands would make and needs no explaining. Until then it is in the
-    // cube's own frame, and saying which frame that is matters more than the moves do.
+    // in the turns your own hands would make - including which way to turn it first, if that saves
+    // a regrip. Until then it assumes the grip the picture is drawn in, which is worth saying:
+    // the same moves from the wrong grip solve nothing.
     const note = el('solution-note');
     note.hidden = !showSolution;
     note.textContent = knowsHolding
-      ? 'in the turns you would make, the way you are holding it'
-      : `for white on top, green facing you — turn a few more and I will know how you are holding it`;
+      ? 'in the turns you would make, the way you are holding it now'
+      : 'assuming you are holding it as pictured — turn a few more and I will know for certain';
     el('show-solution').hidden = showSolution;
 
     const clock = el('drill-clock');

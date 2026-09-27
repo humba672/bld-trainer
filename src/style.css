@@ -1156,12 +1156,15 @@ td.alg {
 }
 
 /* The sticker being asked about. A single colour will not do: the accent is all but invisible on
-   the blue face, white vanishes on white. A dark ring inside a light one reads on all six, and
-   lifting it off the face says which one is meant even at a glance. */
+   the blue face, white vanishes on white. A dark ring inside a light one reads on all six: the
+   light one against the black plastic, the dark one against a light sticker. The first shadow
+   listed paints on top, so the light ring goes first - the other way round, the dark ring sits
+   against the plastic and the light one against the sticker, and a white sticker shows neither.
+   Lifting it off the face says which one is meant even at a glance. */
 .cube3d-sticker.on {
   box-shadow:
-    inset 0 0 0 3px #0b0c0f,
-    inset 0 0 0 6px #fff;
+    inset 0 0 0 3px #fff,
+    inset 0 0 0 7px #0b0c0f;
   transform: translateZ(7px) scale(1.04);
   animation: sticker-pulse 1.3s ease-in-out infinite;
 }
@@ -1169,27 +1172,93 @@ td.alg {
 @keyframes sticker-pulse {
   50% {
     box-shadow:
-      inset 0 0 0 3px #0b0c0f,
-      inset 0 0 0 6px rgb(255 255 255 / 35%);
+      inset 0 0 0 3px rgb(255 255 255 / 35%),
+      inset 0 0 0 7px #0b0c0f;
   }
 }
 
 /* ---------------------------------------------------------------- the F2L case list */
 
-.case-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 0.8rem;
+.lede {
+  max-width: 62ch;
+  margin: 0 0 1.6rem;
+  color: var(--dim);
+  line-height: 1.55;
 }
 
-.case-card {
+.case-group {
+  margin-bottom: 2.2rem;
+}
+
+.case-group h2 {
   display: flex;
-  gap: 0.7rem;
-  padding: 0.7rem;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--line);
-  border-radius: 8px;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* The band colour lives on the heading rather than on all forty-one cards. One coloured mark per
+   group says the same thing and leaves the cubes to be the colourful part. */
+.case-group h2::before {
+  content: '';
+  width: 3px;
+  height: 0.85rem;
+  border-radius: 2px;
+  background: var(--band, var(--line));
+}
+
+.case-group .count {
+  margin-left: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--dim);
+}
+
+.band-worst {
+  --band: #f0623a;
+}
+
+.band-slow {
+  --band: #f0883e;
+}
+
+.band-middling {
+  --band: #d4a72c;
+}
+
+.band-fine {
+  --band: #7bc96f;
+}
+
+.band-quick {
+  --band: #3fb950;
+}
+
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.4rem 1.4rem;
+}
+
+.case {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 0.2rem;
+  border-bottom: 1px solid transparent;
+}
+
+.case:hover {
+  border-bottom-color: var(--line);
 }
 
 .case-art {
@@ -1198,103 +1267,65 @@ td.alg {
 }
 
 .case-body {
-  min-width: 0;
   flex: 1;
+  min-width: 0;
 }
 
 .case-alg {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
   letter-spacing: 0.02em;
 }
 
-.case-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin: 0 0 0.35rem;
-  font-size: 0.78rem;
+/* The rotation is an instruction about the cube, not a turn of a face, and reads better apart. */
+.case-alg .turn {
+  font-style: normal;
+  color: var(--accent);
 }
 
-.case-setup {
-  margin: 0.3rem 0 0.45rem;
-  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
-  font-size: 0.74rem;
-  color: var(--dim);
-}
-
-.case-drill {
-  font-size: 0.78rem;
-}
-
-.dim {
-  color: var(--dim);
-}
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.6rem;
-}
-
-.legend-key {
-  padding: 0.15rem 0.5rem;
-  border-left: 4px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
+.case-facts {
+  margin: 0.2rem 0 0;
   font-size: 0.76rem;
+  color: var(--dim);
 }
 
-/* How you are doing, from quickest to slowest. The band is a border rather than a wash, so the
-   cube in the picture keeps its own colours - a tinted card would fight the stickers. */
-.band-quick {
-  border-left-color: #3fb950;
-}
-
-.band-fine {
-  border-left-color: #7bc96f;
-}
-
-.band-middling {
-  border-left-color: #d4a72c;
-}
-
-.band-slow {
-  border-left-color: #f0883e;
-}
-
-.band-worst {
-  border-left-color: #f0623a;
-}
-
-.band-thin,
-.band-unseen {
-  border-left-color: #3a4150;
-}
-
-.case-card.band-quick .case-band {
-  color: #3fb950;
-}
-
-.case-card.band-fine .case-band {
-  color: #7bc96f;
-}
-
-.case-card.band-middling .case-band {
+.case-facts .warn {
   color: #d4a72c;
 }
 
-.case-card.band-slow .case-band {
-  color: #f0883e;
+/* Setups and the shortest-but-awkward algorithm are worth having and not worth reading forty-one
+   times, so they are off until asked for. */
+.case-extra {
+  display: none;
 }
 
-.case-card.band-worst .case-band {
-  color: #f0623a;
+.with-details .case-extra {
+  display: block;
 }
 
-.case-card.band-thin .case-band,
-.case-card.band-unseen .case-band {
-  color: var(--dim);
+.case-aside {
+  margin: 0.2rem 0 0;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.72rem;
+  color: var(--line);
+}
+
+/* Out of the flow: the algorithm needs every pixel of the card, and a link that is only wanted
+   once you have picked a case can wait until the pointer is on it. */
+.case-drill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0.5rem 0.2rem;
+  font-size: 0.72rem;
+  color: transparent;
+  text-decoration: none;
+}
+
+.case:hover .case-drill {
+  color: var(--accent);
 }
