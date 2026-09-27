@@ -10,7 +10,16 @@
  * slot at the front right, so the algorithm reads in R, U and F like any alg sheet.
  */
 
-import { ORIENTATIONS, applyAlg, applyMove, faceMapOf, invertAlg, type Face } from '../cube/cube';
+import {
+  ORIENTATIONS,
+  SOLVED,
+  applyAlg,
+  applyMove,
+  faceMapOf,
+  invertAlg,
+  type Face,
+} from '../cube/cube';
+import { COLOUR_NAME } from '../cube/colours';
 import { TO_FRONT_RIGHT, f2lCaseOf, f2lComplete, type SlotName } from './cfop';
 import solutionData from '../data/f2l-solutions.json';
 
@@ -22,12 +31,32 @@ const MOVES: string[] = FACES.flatMap((face) => [face, `${face}'`, `${face}2`]);
  * Held white-down with this slot at the front right, D reads as U, R as F and F as R. Found rather
  * than written out, so it cannot drift from what the engine actually does.
  */
-const DISPLAY_ROTATION = ORIENTATIONS.find((rotation) => {
+export const DISPLAY_ROTATION = ORIENTATIONS.find((rotation) => {
   const map = faceMapOf(rotation);
   return map.U === 'D' && map.F === 'R' && map.R === 'F';
 })!;
 
 const DISPLAY_MAP = faceMapOf(DISPLAY_ROTATION);
+
+/**
+ * Which face of the cube ends up where, when you hold it the way the printed algorithms are
+ * written. Read off a solved cube rather than written down, so it cannot drift from the notation:
+ * whatever rotation the display uses, this is what you would be looking at.
+ */
+export const DISPLAY_GRIP = (() => {
+  const held = applyAlg(SOLVED, DISPLAY_ROTATION);
+  return {
+    up: held[4] as Face,
+    right: held[1 * 9 + 4] as Face,
+    front: held[2 * 9 + 4] as Face,
+  };
+})();
+
+/** The same thing in words, for the screens: which colour goes where. */
+export function gripSentence(): string {
+  const { up, front, right } = DISPLAY_GRIP;
+  return `${COLOUR_NAME[up]} on top, ${COLOUR_NAME[front]} facing you, ${COLOUR_NAME[right]} on your right`;
+}
 
 /** The same algorithm, written the way you would read it off a sheet. */
 export function inSolverNotation(alg: string): string {
