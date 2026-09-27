@@ -7,6 +7,7 @@
 
 import { del, get, keys, set } from 'idb-keyval';
 import type { Solve } from './timer/averages';
+import { reread } from './timer/reread';
 import type { DrillAttempt } from './timer/f2l-stats';
 
 export interface StickerStat {
@@ -92,7 +93,25 @@ export const saveProgress = (progress: Progress) => set(KEY.progress, progress);
 
 // ---------------------------------------------------------------- timer
 
-export const loadSolves = async (): Promise<Solve[]> => (await get<Solve[]>(KEY.solves)) ?? [];
+let rereadOnLoad = 0;
+
+/** How many stored solves the last load had to work out again. Shown on the F2L screen. */
+export const solvesReread = () => rereadOnLoad;
+
+/**
+ * Loading a solve also brings it up to the current reading. The stages and the case names are
+ * worked out from the turns rather than recorded, so a fix to the reading has to reach the solves
+ * already done - otherwise the F2L table would go on ranking cases by numbers taken the wrong way.
+ */
+export const loadSolves = async (): Promise<Solve[]> => {
+  const stored = (await get<Solve[]>(KEY.solves)) ?? [];
+  const { solves, changed } = reread(stored);
+  if (changed) {
+    rereadOnLoad = changed;
+    await set(KEY.solves, solves);
+  }
+  return solves;
+};
 
 export async function addSolve(solve: Solve): Promise<Solve[]> {
   const all = [...(await loadSolves()), solve];

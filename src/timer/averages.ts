@@ -32,6 +32,11 @@ export interface Solve {
    * cube's own packets agree with the reconstruction; null means it could not be asked.
    */
   verified?: boolean | null;
+  /**
+   * Which reading of the turns the stages and pairs above came from. Older than the current one and
+   * they are worked out again on load, so a fix to the reading reaches solves already done.
+   */
+  reading?: number;
 }
 
 /** What the clock says once penalties are counted. DNF sorts last. */

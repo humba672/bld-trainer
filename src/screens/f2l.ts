@@ -23,7 +23,7 @@ import { netSvg } from '../ui/net';
 import solutionData from '../data/f2l-solutions.json';
 import { solutionFor } from '../timer/f2l-solve';
 import { declareSolved, isConnected, onCubeChange, tracker } from '../session';
-import { addDrill, loadDrills, loadSolves, replaceDrills } from '../store';
+import { addDrill, loadDrills, loadSolves, replaceDrills, solvesReread } from '../store';
 import type { DrillAttempt } from '../timer/f2l-stats';
 import type { Solve } from '../timer/averages';
 
@@ -95,6 +95,7 @@ export function mountF2L(container: HTMLElement): () => void {
         one fumble would put it top.
       </p>
       <p id="case-other" class="hint"></p>
+      <p id="reread-note" class="hint" hidden></p>
       <div class="table-wrap"><table>
         <thead><tr>
           <th></th><th>Solution, front-right slot</th><th>Cost / solve</th><th>Execution</th><th>Best</th>
@@ -346,6 +347,14 @@ export function mountF2L(container: HTMLElement): () => void {
   void (async () => {
     [solves, drills] = await Promise.all([loadSolves(), loadDrills()]);
     stats = f2lStats(solves, drills);
+    const repaired = solvesReread();
+    if (repaired) {
+      const note = el('reread-note');
+      note.hidden = false;
+      note.textContent =
+        `${repaired} earlier ${repaired === 1 ? 'solve was' : 'solves were'} read again: cases ` +
+        `outside the front-right slot used to be named wrongly, so the numbers below have changed.`;
+    }
     chooseNext();
   })();
 
