@@ -21,6 +21,7 @@ import {
 } from '../cube/cube';
 import { COLOUR_NAME } from '../cube/colours';
 import { TO_FRONT_RIGHT, f2lCaseOf, f2lComplete, type SlotName } from './cfop';
+import { bestExecution, type Execution } from './execution';
 import solutionData from '../data/f2l-solutions.json';
 
 /** The free layer and the two faces either side of the front-right slot. */
@@ -88,6 +89,42 @@ export function solveF2LCase(state: string, maxDepth = 12): string | null {
   return answer;
 }
 
+/**
+ * The cheapest algorithm rather than the shortest, when the faces do not cost the same.
+ *
+ * An F move cannot be made without letting go of the cube, so it is worth more than a turn of the
+ * face your fingers are already on - which means the shortest algorithm is not always the quickest
+ * one. Give the awkward face a higher price and the search will happily take a longer route round
+ * it, which is what a speedsolver does by hand.
+ *
+ * Costs are in the cube's own frame, where the two faces beside the slot are R and F; which of
+ * them is the awkward one depends on how the cube is being held, so that is the caller's business.
+ */
+export function cheapestF2L(
+  state: string,
+  costOf: Record<string, number>,
+  maxCost = 14,
+): string | null {
+  const walk = (at: string, left: number, lastFace: string, path: string[]): string | null => {
+    if (f2lComplete(at)) return path.join(' ');
+    for (const move of MOVES) {
+      const cost = costOf[move[0]] ?? 1;
+      if (move[0] === lastFace || cost > left) continue;
+      path.push(move);
+      const found = walk(applyMove(at, move), left - cost, move[0], path);
+      path.pop();
+      if (found !== null) return found;
+    }
+    return null;
+  };
+
+  for (let bound = 0; bound <= maxCost; bound++) {
+    const found = walk(state, bound, '', []);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
 function search(state: string, depth: number, lastFace: string, path: string[]): string | null {
   if (f2lComplete(state)) return path.join(' ');
   if (depth === 0) return null;
@@ -106,7 +143,7 @@ function search(state: string, depth: number, lastFace: string, path: string[]):
 
 // ---------------------------------------------------------------- the one you can actually do
 
-const SOLUTIONS = solutionData as Record<string, { cubeFrame: string }>;
+const SOLUTIONS = solutionData as Record<string, { cubeFrame: string; options?: string[] }>;
 
 const relabel = (alg: string, map: Record<Face, Face>): string =>
   alg
@@ -133,24 +170,51 @@ const invertMap = (map: Record<Face, Face>): Record<Face, Face> =>
  * white on top.
  */
 export function solutionFor(state: string, slot: SlotName, holding = ''): string | null {
-  const stored = SOLUTIONS[f2lCaseOf(state, slot).key]?.cubeFrame;
-  if (stored === undefined) return null;
+  const [first] = candidatesFor(state, slot);
+  if (first === undefined) return null;
+  return holding ? relabel(first, faceMapOf(holding)) : first;
+}
 
-  // The state is never turned round: a real cube's frame is its centres and they do not move, and
-  // every "is this solved" check here is written against them. The algorithm is relabelled into
-  // the slot instead. Both ways round are tried and the one that actually solves what is in front
-  // of us wins, rather than trusting a rotation to compose the way I think it does.
+/**
+ * Every stored algorithm for this case, written so that it solves the cube actually in front of
+ * you - in the cube's own frame, ready to be named for whatever grip it is going to be read in.
+ *
+ * The state is never turned round: a real cube's frame is its centres and they do not move, and
+ * every "is this solved" check here is written against them. The algorithms are relabelled into
+ * the slot instead. Both ways round are tried and only the ones that really do finish the pair are
+ * kept, rather than trusting a rotation to compose the way I think it does.
+ */
+export function candidatesFor(state: string, slot: SlotName): string[] {
+  const entry = SOLUTIONS[f2lCaseOf(state, slot).key];
+  if (entry === undefined) return [];
+
   const intoSlot = faceMapOf(TO_FRONT_RIGHT[slot] ? invertAlg(TO_FRONT_RIGHT[slot]) : '');
-  const forSlot = [relabel(stored, intoSlot), relabel(stored, invertMap(intoSlot))];
+  const found: string[] = [];
 
-  for (const alg of forSlot) {
-    // Which turn of the free layer lines this up with the case as it was stored.
-    for (const auf of ['', 'D', 'D2', "D'"]) {
-      const candidate = auf ? `${auf} ${alg}` : alg;
-      if (!f2lComplete(applyAlg(state, candidate))) continue;
-      // And into the moves your hands would make.
-      return holding ? relabel(candidate, faceMapOf(holding)) : candidate;
+  for (const option of entry.options ?? [entry.cubeFrame]) {
+    for (const alg of [relabel(option, intoSlot), relabel(option, invertMap(intoSlot))]) {
+      // Which turn of the free layer lines this up with the case as it was stored.
+      for (const auf of ['', 'D', 'D2', "D'"]) {
+        const candidate = auf ? `${auf} ${alg}` : alg;
+        if (!f2lComplete(applyAlg(state, candidate))) continue;
+        if (!found.includes(candidate)) found.push(candidate);
+        break;
+      }
     }
   }
-  return null;
+  return found;
+}
+
+/**
+ * The nicest way to do the case in front of you, in the turns your own hands would make.
+ *
+ * `holding` is the rotation the site worked out while you set the case up. Knowing it means the
+ * moves can be named for the cube as you are actually holding it, and the rotation that saves a
+ * regrip can be chosen for that grip rather than for the one the case list assumes. Empty means it
+ * could not tell, and the grip the pictures use is assumed instead.
+ */
+export function executionFor(state: string, slot: SlotName, holding = ''): Execution | null {
+  const candidates = candidatesFor(state, slot);
+  if (!candidates.length) return null;
+  return bestExecution(candidates, holding || DISPLAY_ROTATION);
 }

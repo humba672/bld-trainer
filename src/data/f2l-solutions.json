@@ -3,246 +3,406 @@
   "setup": "R' D R",
   "cubeFrame": "R' D' R",
   "alg": "F' U' F",
-  "length": 3
+  "length": 3,
+  "options": [
+   "R' D' R"
+  ]
  },
  "c4.1e8.0": {
   "setup": "R' D' R",
   "cubeFrame": "R' D R",
   "alg": "F' U F",
-  "length": 3
+  "length": 3,
+  "options": [
+   "R' D R"
+  ]
  },
  "c4.2e9.1": {
   "setup": "F D F'",
   "cubeFrame": "F D' F'",
   "alg": "R U' R'",
-  "length": 3
+  "length": 3,
+  "options": [
+   "F D' F'"
+  ]
  },
  "c4.1e10.1": {
   "setup": "F D' F'",
   "cubeFrame": "F D F'",
   "alg": "R U R'",
-  "length": 3
+  "length": 3,
+  "options": [
+   "F D F'"
+  ]
  },
  "c0.1e10.0": {
   "setup": "R' D R F D F'",
   "cubeFrame": "F D' F' R' D' R",
   "alg": "R U' R' F' U' F",
-  "length": 6
+  "length": 6,
+  "options": [
+   "F D' F' R' D' R",
+   "D' R' D2 R D2 R' D' R"
+  ]
  },
  "c4.0e10.0": {
   "setup": "R' D R F D' F'",
   "cubeFrame": "R' D' R2 F' R' F",
   "alg": "F' U' F2 R' F' R",
-  "length": 6
+  "length": 6,
+  "options": [
+   "R' D' R2 F' R' F",
+   "F D F' R' D' R",
+   "R' D' R D' R' D R"
+  ]
  },
  "c4.0e4.1": {
   "setup": "R' D R F D2 F'",
   "cubeFrame": "F D2 F' R' D' R",
   "alg": "R U2 R' F' U' F",
-  "length": 6
+  "length": 6,
+  "options": [
+   "F D2 F' R' D' R"
+  ]
  },
  "c0.2e10.0": {
   "setup": "R' D2 R F D2 F'",
   "cubeFrame": "R' D R2 F' R' F",
   "alg": "F' U F2 R' F' R",
-  "length": 6
+  "length": 6,
+  "options": [
+   "R' D R2 F' R' F",
+   "F D2 F' R' D2 R",
+   "R' D R D' R' D R"
+  ]
  },
  "c4.0e11.1": {
   "setup": "F D' F' R' D R",
   "cubeFrame": "R' D' R F D F'",
   "alg": "F' U' F R U R'",
-  "length": 6
+  "length": 6,
+  "options": [
+   "R' D' R F D F'",
+   "F D F' D F D' F'"
+  ]
  },
  "c0.2e10.1": {
   "setup": "F D' F' R' D' R",
   "cubeFrame": "R' D R F D F'",
   "alg": "F' U F R U R'",
-  "length": 6
+  "length": 6,
+  "options": [
+   "R' D R F D F'",
+   "D F D2 F' D2 F D F'"
+  ]
  },
  "c0.1e10.1": {
   "setup": "F D2 F' R' D2 R",
   "cubeFrame": "R' D2 R F D2 F'",
   "alg": "F' U2 F R U2 R'",
-  "length": 6
+  "length": 6,
+  "options": [
+   "R' D2 R F D2 F'",
+   "F D' F' D F D' F'"
+  ]
  },
  "c4.2e10.0": {
   "setup": "R' D R D R' D R",
   "cubeFrame": "R' D' R D' R' D' R",
   "alg": "F' U' F U' F' U' F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D' R D' R' D' R",
+   "F D F' D2 R' D' R"
+  ]
  },
  "c4.2e8.0": {
   "setup": "R' D R D R' D' R",
   "cubeFrame": "R' D R D' R' D' R",
   "alg": "F' U F U' F' U' F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D R D' R' D' R",
+   "R D F D' F' R2 D' R"
+  ]
  },
  "c4.2e4.0": {
   "setup": "R' D R D R' D2 R",
   "cubeFrame": "R' D2 R D' R' D' R",
   "alg": "F' U2 F U' F' U' F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D2 R D' R' D' R",
+   "D2 F D' F' D' F D2 F'"
+  ]
  },
  "c4.2e4.1": {
   "setup": "R' D R D F D F'",
   "cubeFrame": "F D F' D' R' D R",
   "alg": "R U R' U' F' U F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "F D F' D' R' D R"
+  ]
  },
  "c0.0e10.0": {
   "setup": "R' D R D F D' F'",
   "cubeFrame": "R F' R' F R' D' R",
   "alg": "F R' F' R F' U' F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R F' R' F R' D' R",
+   "F D F' D' R' D' R",
+   "R D R2 D R2 D2 R2 D' R"
+  ]
  },
  "c4.0e8.0": {
   "setup": "R' D R D' R' D2 R",
   "cubeFrame": "R' D2 R D R' D' R",
   "alg": "F' U2 F U F' U' F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D2 R D R' D' R",
+   "D2 R2 D2 F' R' F D2 R2"
+  ]
  },
  "c4.2e9.0": {
   "setup": "R' D R D' F D2 F'",
   "cubeFrame": "F D2 F' D R' D' R",
   "alg": "R U2 R' U F' U' F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "F D2 F' D R' D' R",
+   "D R D2 R2 D' R2 D' R'"
+  ]
  },
  "c4.1e9.0": {
   "setup": "R' D R D2 F D F'",
   "cubeFrame": "F D' F' D2 R' D' R",
   "alg": "R U' R' U2 F' U' F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "F D' F' D2 R' D' R",
+   "R' D R' D2 R2 D R2 D R2"
+  ]
  },
  "c4.0e9.0": {
   "setup": "R' D R F D F' R' D R",
   "cubeFrame": "D2 R2 D2 R D R' D R2",
   "alg": "U2 F2 U2 F U F' U F2",
-  "length": 8
+  "length": 8,
+  "options": [
+   "D2 R2 D2 R D R' D R2",
+   "R D F D' F' R' F D' F'"
+  ]
  },
  "c4.0e11.0": {
   "setup": "R' D R F D' F' R' D R",
   "cubeFrame": "R' D2 R2 F' R' F",
   "alg": "F' U2 F2 R' F' R",
-  "length": 6
+  "length": 6,
+  "options": [
+   "R' D2 R2 F' R' F",
+   "R' D2 R D' R' D R"
+  ]
  },
  "c4.0e8.1": {
   "setup": "R' D R F D2 F' R' D R",
   "cubeFrame": "D F2 D2 F' D' F D' F2",
   "alg": "U R2 U2 R' U' R U' R2",
-  "length": 8
+  "length": 8,
+  "options": [
+   "D F2 D2 F' D' F D' F2",
+   "R' D' R F D2 F' R' D' R"
+  ]
  },
  "c4.0e10.1": {
   "setup": "R' D R F D2 F' R' D' R",
   "cubeFrame": "F D2 F2 R F R'",
   "alg": "R U2 R2 F R F'",
-  "length": 6
+  "length": 6,
+  "options": [
+   "F D2 F2 R F R'",
+   "F D2 F' D F D' F'"
+  ]
  },
  "c4.1e11.0": {
   "setup": "R' D' R D2 R' D R",
   "cubeFrame": "R' D' R D R' D2 R",
   "alg": "F' U' F U F' U2 F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D' R D R' D2 R",
+   "D R F' R' F D2 F D F'"
+  ]
  },
  "c4.1e4.0": {
   "setup": "R' D' R D2 R' D' R",
   "cubeFrame": "R' D R D R' D2 R",
   "alg": "F' U F U F' U2 F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D R D R' D2 R",
+   "F D F' D2 F D F'"
+  ]
  },
  "c4.1e10.0": {
   "setup": "R' D' R D2 R' D2 R",
   "cubeFrame": "R' D2 R D R' D2 R",
   "alg": "F' U2 F U F' U2 F",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D2 R D R' D2 R",
+   "D' F2 D2 R F2 R' D2 F2"
+  ]
  },
  "c4.1e4.1": {
   "setup": "F D F' D' R' D R",
   "cubeFrame": "R' D R D F D F'",
   "alg": "F' U F U R U R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D R D F D F'"
+  ]
  },
  "c0.0e10.1": {
   "setup": "F D F' D' R' D' R",
   "cubeFrame": "R' D R D F D' F'",
   "alg": "F' U F U R U' R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D R D F D' F'",
+   "F' D' F2 D' F2 D2 F2 D F'"
+  ]
  },
  "c4.2e10.1": {
   "setup": "F D F' D2 F D' F'",
   "cubeFrame": "F D F' D' F D2 F'",
   "alg": "R U R' U' R U2 R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "F D F' D' F D2 F'",
+   "D R D R' F' R F D' R'"
+  ]
  },
  "c4.2e11.1": {
   "setup": "F D F' D2 F D2 F'",
   "cubeFrame": "F D2 F' D' F D2 F'",
   "alg": "R U2 R' U' R U2 R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "F D2 F' D' F D2 F'",
+   "D R2 D2 F' R2 F D2 R2"
+  ]
  },
  "c4.1e11.1": {
   "setup": "F D' F' D R' D' R",
   "cubeFrame": "R' D R D' F D F'",
   "alg": "F' U F U' R U R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D R D' F D F'",
+   "D F D' F' D' F D F'"
+  ]
  },
  "c4.1e8.1": {
   "setup": "F D' F' D R' D2 R",
   "cubeFrame": "R' D2 R D' F D F'",
   "alg": "F' U2 F U' R U R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D2 R D' F D F'",
+   "D' F' D2 F2 D F2 D F"
+  ]
  },
  "c4.0e9.1": {
   "setup": "F D' F' D F D2 F'",
   "cubeFrame": "F D2 F' D' F D F'",
   "alg": "R U2 R' U' R U R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "F D2 F' D' F D F'",
+   "D2 F2 D2 R F R' D2 F2"
+  ]
  },
  "c4.1e9.1": {
   "setup": "F D' F' D' F D F'",
   "cubeFrame": "F D' F' D F D F'",
   "alg": "R U' R' U R U R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "F D' F' D F D F'"
+  ]
  },
  "c4.2e8.1": {
   "setup": "F D' F' D2 R' D' R",
   "cubeFrame": "R' D R D2 F D F'",
   "alg": "F' U F U2 R U R'",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R' D R D2 F D F'",
+   "F D' F D2 F2 D' F2 D' F2"
+  ]
  },
  "c4.0e4.0": {
   "setup": "R' D R D' F D2 F' R' D2 R",
   "cubeFrame": "R2 D' R2 D' R2 D2 R2",
   "alg": "F2 U' F2 U' F2 U2 F2",
-  "length": 7
+  "length": 7,
+  "options": [
+   "R2 D' R2 D' R2 D2 R2",
+   "F2 D F2 D F2 D2 F2"
+  ]
  },
  "c0.2e4.1": {
   "setup": "R' D R D2 R' D' R F D F'",
   "cubeFrame": "R' F' D' R' D R F D R",
   "alg": "F' R' U' F' U F R U F",
-  "length": 9
+  "length": 9,
+  "options": [
+   "R' F' D' R' D R F D R",
+   "F D R F D F' D' R' F'"
+  ]
  },
  "c0.1e4.1": {
   "setup": "F D' F' D2 F D F' R' D' R",
   "cubeFrame": "R' D' F' R' D' R D F R",
   "alg": "F' U' R' F' U' F U R F",
-  "length": 9
+  "length": 9,
+  "options": [
+   "R' D' F' R' D' R D F R",
+   "F R D F D' F' R' D' F'"
+  ]
  },
  "c0.1e4.0": {
   "setup": "R' D R D R' D' R D R' D2 R",
   "cubeFrame": "R' D2 R' D' R D' R' D2 R2",
   "alg": "F' U2 F' U' F U' F' U2 F2",
-  "length": 9
+  "length": 9,
+  "options": [
+   "R' D2 R' D' R D' R' D2 R2",
+   "F2 D2 F' D' F D' F' D2 F'"
+  ]
  },
  "c0.2e4.0": {
   "setup": "R' D R D' R' D R F D2 F' R' D2 R",
   "cubeFrame": "R' D2 R' D2 F' R' F D2 R2",
   "alg": "F' U2 F' U2 R' F' R U2 F2",
-  "length": 9
+  "length": 9,
+  "options": [
+   "R' D2 R' D2 F' R' F D2 R2",
+   "F D2 F D F' D F D2 F2",
+   "R2 D2 R D R' D R D2 R"
+  ]
  },
  "c0.0e4.1": {
   "setup": "R' D R D' F D2 F' D' F D2 F'",
   "cubeFrame": "R' D R' D2 F' R2 F D2 R2",
   "alg": "F' U F' U2 R' F2 R U2 F2",
-  "length": 9
+  "length": 9,
+  "options": [
+   "R' D R' D2 F' R2 F D2 R2",
+   "F D' F D2 R F2 R' D2 F2"
+  ]
  }
 }
