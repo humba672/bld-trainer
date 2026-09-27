@@ -10,8 +10,9 @@
  * slot at the front right, so the algorithm reads in R, U and F like any alg sheet.
  */
 
-import { ORIENTATIONS, applyMove, faceMapOf, type Face } from '../cube/cube';
-import { f2lComplete } from './cfop';
+import { ORIENTATIONS, applyAlg, applyMove, faceMapOf, invertAlg, type Face } from '../cube/cube';
+import { TO_FRONT_RIGHT, f2lCaseOf, f2lComplete, type SlotName } from './cfop';
+import solutionData from '../data/f2l-solutions.json';
 
 /** The free layer and the two faces either side of the front-right slot. */
 const FACES: Face[] = ['D', 'R', 'F'];
@@ -70,6 +71,57 @@ function search(state: string, depth: number, lastFace: string, path: string[]):
     const found = search(next, depth - 1, move[0], path);
     path.pop();
     if (found !== null) return found;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- the one you can actually do
+
+const SOLUTIONS = solutionData as Record<string, { cubeFrame: string }>;
+
+const relabel = (alg: string, map: Record<Face, Face>): string =>
+  alg
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((move) => (map[move[0] as Face] ?? move[0]) + move.slice(1))
+    .join(' ');
+
+const invertMap = (map: Record<Face, Face>): Record<Face, Face> =>
+  Object.fromEntries(Object.entries(map).map(([from, to]) => [to, from])) as Record<Face, Face>;
+
+/**
+ * The algorithm for the case in front of you, written as the turns you would actually make.
+ *
+ * A stored algorithm solves its case in the cube's own frame with the slot at the front right.
+ * Neither of those is true when you are drilling: the case lands in whichever slot the setup
+ * opened, and you hold the cube however you like. So it is turned round twice - once for the slot,
+ * once for the way you are holding it - and every step is checked by applying it, rather than
+ * trusted to come out right.
+ *
+ * `holding` is the rotation from white-on-top, green-in-front that the site worked out while you
+ * were setting the case up. Empty means it could not tell, and the answer is then written for
+ * white on top.
+ */
+export function solutionFor(state: string, slot: SlotName, holding = ''): string | null {
+  const stored = SOLUTIONS[f2lCaseOf(state, slot).key]?.cubeFrame;
+  if (stored === undefined) return null;
+
+  // The state is never turned round: a real cube's frame is its centres and they do not move, and
+  // every "is this solved" check here is written against them. The algorithm is relabelled into
+  // the slot instead. Both ways round are tried and the one that actually solves what is in front
+  // of us wins, rather than trusting a rotation to compose the way I think it does.
+  const intoSlot = faceMapOf(TO_FRONT_RIGHT[slot] ? invertAlg(TO_FRONT_RIGHT[slot]) : '');
+  const forSlot = [relabel(stored, intoSlot), relabel(stored, invertMap(intoSlot))];
+
+  for (const alg of forSlot) {
+    // Which turn of the free layer lines this up with the case as it was stored.
+    for (const auf of ['', 'D', 'D2', "D'"]) {
+      const candidate = auf ? `${auf} ${alg}` : alg;
+      if (!f2lComplete(applyAlg(state, candidate))) continue;
+      // And into the moves your hands would make.
+      return holding ? relabel(candidate, faceMapOf(holding)) : candidate;
+    }
   }
   return null;
 }

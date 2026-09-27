@@ -21,6 +21,7 @@ import type { ScrambleProgress } from '../timer/scramble-progress';
 import { renderScramble } from '../ui/scramble-view';
 import { netSvg } from '../ui/net';
 import solutionData from '../data/f2l-solutions.json';
+import { solutionFor } from '../timer/f2l-solve';
 import { declareSolved, isConnected, onCubeChange, tracker } from '../session';
 import { addDrill, loadDrills, loadSolves, replaceDrills } from '../store';
 import type { DrillAttempt } from '../timer/f2l-stats';
@@ -73,6 +74,10 @@ export function mountF2L(container: HTMLElement): () => void {
           <div class="controls">
             <button id="show-solution">show the solution</button>
             <span id="solution" class="solution" hidden></span>
+            <span id="solution-note" class="hint" hidden>
+              written for white on top, green in front — turn a couple more and I will know how you
+              are holding it
+            </span>
             <button id="solved" hidden title="Only if it really is: this tells the cube so too">
               My cube is solved
             </button>
@@ -92,7 +97,7 @@ export function mountF2L(container: HTMLElement): () => void {
       <p id="case-other" class="hint"></p>
       <div class="table-wrap"><table>
         <thead><tr>
-          <th></th><th>Solution</th><th>Cost / solve</th><th>Execution</th><th>Best</th>
+          <th></th><th>Solution, front-right slot</th><th>Cost / solve</th><th>Execution</th><th>Best</th>
           <th>Recognition</th><th>Per solve</th><th>Reps</th><th></th>
         </tr></thead>
         <tbody id="cases"></tbody>
@@ -118,6 +123,9 @@ export function mountF2L(container: HTMLElement): () => void {
   let drills: DrillAttempt[] = [];
   let stats: CaseStat[] = [];
   let showSolution = false;
+  /** The algorithm for the case actually in front of you, in the turns you would make. */
+  let liveSolution: string | null = null;
+  let knowsHolding = false;
 
   function chooseNext(): void {
     const mode = el<HTMLSelectElement>('mode').value;
@@ -140,6 +148,8 @@ export function mountF2L(container: HTMLElement): () => void {
     progress = { done: 0, wrong: false };
     liveCase = null;
     showSolution = false;
+    liveSolution = null;
+    knowsHolding = false;
     phase = 'setting-up';
     render();
   }
@@ -179,6 +189,10 @@ export function mountF2L(container: HTMLElement): () => void {
       if (setupTracker.complete) {
         const slot = openSlot(state);
         liveCase = slot ? { key: f2lCaseOf(state, slot).key, slot } : null;
+        // Worked out now, while the case is still on the cube: which slot it landed in and which
+        // way round you are holding it both change what you would actually turn.
+        knowsHolding = setupTracker.holding !== '';
+        liveSolution = slot ? solutionFor(state, slot, setupTracker.holding) : null;
         phase = 'ready';
       }
       render();
@@ -247,7 +261,10 @@ export function mountF2L(container: HTMLElement): () => void {
 
     const solution = el('solution');
     solution.hidden = !showSolution;
-    solution.textContent = `${algFor(targetKey)}  (${SOLUTIONS[targetKey]?.length ?? 0})`;
+    const shown = liveSolution ?? algFor(targetKey);
+    const turns = shown.split(' ').filter(Boolean).length;
+    solution.textContent = `${shown}  (${turns})`;
+    el('solution-note').hidden = !showSolution || !liveSolution || knowsHolding;
     el('show-solution').hidden = showSolution;
 
     const clock = el('drill-clock');
