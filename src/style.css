@@ -1069,3 +1069,16 @@ td .row-actions {
   color: var(--dim);
   text-align: right;
 }
+
+.solution {
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+td.alg {
+  color: var(--dim);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}

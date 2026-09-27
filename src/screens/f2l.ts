@@ -20,6 +20,7 @@ import { ScrambleTracker } from '../timer/scramble-tracker';
 import type { ScrambleProgress } from '../timer/scramble-progress';
 import { renderScramble } from '../ui/scramble-view';
 import { netSvg } from '../ui/net';
+import solutionData from '../data/f2l-solutions.json';
 import { declareSolved, isConnected, onCubeChange, tracker } from '../session';
 import { addDrill, loadDrills, loadSolves, replaceDrills } from '../store';
 import type { DrillAttempt } from '../timer/f2l-stats';
@@ -29,6 +30,10 @@ type Phase = 'waiting' | 'setting-up' | 'ready' | 'drilling' | 'done';
 
 const CASES = enumerateF2LCases();
 const DRILLABLE = [...CASES.values()].filter((entry) => !entry.solved);
+
+/** The shortest algorithm for each case, worked out offline. See scripts/build-f2l-solutions.mjs. */
+const SOLUTIONS = solutionData as Record<string, { alg: string; length: number }>;
+const algFor = (key: string): string => SOLUTIONS[key]?.alg ?? '—';
 
 /** The cube as this case looks, for the picture. */
 const stateOfCase = (key: string): string => applyAlg(SOLVED, CASES.get(key)?.setup ?? '');
@@ -57,7 +62,11 @@ export function mountF2L(container: HTMLElement): () => void {
           <div id="drill-clock" class="clock">0.00</div>
           <p id="drill-prompt" class="prompt"></p>
           <div class="controls">
-            <button id="solved" hidden>My cube is solved</button>
+            <button id="show-solution">show the solution</button>
+            <span id="solution" class="solution" hidden></span>
+            <button id="solved" hidden title="Only if it really is: this tells the cube so too">
+              My cube is solved
+            </button>
           </div>
         </div>
       </div>
@@ -73,7 +82,7 @@ export function mountF2L(container: HTMLElement): () => void {
       </p>
       <div class="table-wrap"><table>
         <thead><tr>
-          <th></th><th>Cost / solve</th><th>Execution</th><th>Best</th>
+          <th></th><th>Solution</th><th>Cost / solve</th><th>Execution</th><th>Best</th>
           <th>Recognition</th><th>Per solve</th><th>Reps</th><th></th>
         </tr></thead>
         <tbody id="cases"></tbody>
@@ -98,6 +107,7 @@ export function mountF2L(container: HTMLElement): () => void {
   let solves: Solve[] = [];
   let drills: DrillAttempt[] = [];
   let stats: CaseStat[] = [];
+  let showSolution = false;
 
   function chooseNext(): void {
     const mode = el<HTMLSelectElement>('mode').value;
@@ -119,6 +129,7 @@ export function mountF2L(container: HTMLElement): () => void {
     setupTracker = new ScrambleTracker(setup, from);
     progress = { done: 0, wrong: false };
     liveCase = null;
+    showSolution = false;
     phase = 'setting-up';
     render();
   }
@@ -212,17 +223,22 @@ export function mountF2L(container: HTMLElement): () => void {
     el('drill-prompt').textContent = !isConnected()
       ? 'No cube connected — the driller needs it to see the case go on and come off.'
       : phase === 'waiting'
-        ? 'Finish the first two layers on your cube, and the case will go on from there.'
+        ? 'Finish the first two layers on your cube — the cross and all four slots — and the case goes on from there. The last layer can be anything.'
         : phase === 'setting-up'
           ? progress.wrong
             ? 'That turn is not in the setup — undo it.'
             : `${progress.done} of ${setupTracker.moveCount} on.`
           : phase === 'ready'
-            ? 'Solve the pair. The clock stops when the first two layers are whole.'
+            ? 'Solve the pair. The clock stops the moment the pair goes in, whatever the last layer is doing.'
             : '';
 
     // Somewhere to say so when the cube is not where the driller needs it to be.
     el('solved').hidden = phase !== 'waiting';
+
+    const solution = el('solution');
+    solution.hidden = !showSolution;
+    solution.textContent = `${algFor(targetKey)}  (${SOLUTIONS[targetKey]?.length ?? 0})`;
+    el('show-solution').hidden = showSolution;
 
     const clock = el('drill-clock');
     if (phase === 'drilling') {
@@ -252,6 +268,7 @@ export function mountF2L(container: HTMLElement): () => void {
       const row = document.createElement('tr');
       row.innerHTML = `
         <td class="case-cell"></td>
+        <td class="mono alg">${algFor(stat.caseKey)}</td>
         <td>${stat.ranked ? formatMs(stat.lossPerSolveMs) : '—'}</td>
         <td>${formatMs(stat.meanExecutionMs)}</td>
         <td>${formatMs(stat.bestExecutionMs)}</td>
@@ -271,10 +288,14 @@ export function mountF2L(container: HTMLElement): () => void {
     }
     if (!stats.length) {
       body.innerHTML =
-        '<tr><td colspan="8" class="hint">Nothing yet. Do some solves, or drill a few cases.</td></tr>';
+        '<tr><td colspan="9" class="hint">Nothing yet. Do some solves, or drill a few cases.</td></tr>';
     }
   }
 
+  el('show-solution').addEventListener('click', () => {
+    showSolution = true;
+    render();
+  });
   el('skip').addEventListener('click', () => chooseNext());
   el('mode').addEventListener('change', () => chooseNext());
   el('clear-drills').addEventListener('click', async () => {
