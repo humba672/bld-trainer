@@ -5,7 +5,8 @@
 
 import { SOLVED, applyAlg } from '../cube/cube';
 import { memoFor, pairsOf } from '../bld/op';
-import { lettersIn, memoIsValid, runningStreak } from '../bld/drills';
+import type { Letter } from '../bld/speffz';
+import { checkMemo, lettersIn, memoIsValid, runningStreak, type MemoCheck } from '../bld/drills';
 import { randomScramble } from '../cube/scramble';
 import { type ScrambleProgress } from '../timer/scramble-progress';
 import { ScrambleTracker } from '../timer/scramble-tracker';
@@ -138,7 +139,7 @@ export function mountTracingDrill(container: HTMLElement): () => void {
         attempt.typed || '—'
       }</td><td>${attempt.seconds.toFixed(0)}s</td><td class="${
         attempt.correct ? 'good' : 'bad'
-      }">${attempt.correct ? 'right' : 'wrong'}</td>`;
+      }">${verdictOf(attempt)}</td>`;
       history.appendChild(row);
     }
   }
@@ -147,6 +148,8 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     const edges = lettersIn(el<HTMLInputElement>('edges-in').value);
     const corners = lettersIn(el<HTMLInputElement>('corners-in').value);
     const seconds = startedAt ? (performance.now() - startedAt) / 1000 : 0;
+    const edgeCheck = checkMemo(scrambled, edges, 'edge');
+    const cornerCheck = checkMemo(scrambled, corners, 'corner');
     const correct = memoIsValid(scrambled, edges, corners);
     const mine = memoFor(scrambled);
 
@@ -156,6 +159,8 @@ export function mountTracingDrill(container: HTMLElement): () => void {
       typed: `${edges.join('')} / ${corners.join('')}`,
       correct,
       seconds,
+      edgesOk: edgeCheck.ok,
+      cornersOk: cornerCheck.ok,
     });
 
     const result = el('result');
@@ -163,6 +168,8 @@ export function mountTracingDrill(container: HTMLElement): () => void {
       <p class="verdict ${correct ? 'good' : 'bad'}">${
         correct ? 'That memo solves it.' : 'That memo does not solve it.'
       }</p>
+      ${halfHtml('Edges', edges, edgeCheck)}
+      ${halfHtml('Corners', corners, cornerCheck)}
       <div class="detail"><span class="key">The site's edges</span><span class="value pairs" id="site-edges"></span></div>
       <div class="detail"><span class="key">The site's corners</span><span class="value pairs" id="site-corners"></span></div>
       <p class="hint">Yours can differ and still be right, as long as it solves the cube.</p>`;
@@ -196,3 +203,75 @@ export function mountTracingDrill(container: HTMLElement): () => void {
   };
 }
 
+/**
+ * Where a memo broke, in the words a tracer would use. Only the first mistake is described:
+ * everything after a wrong target is wrong because of it, not on its own account.
+ */
+function faultInWords(check: MemoCheck, total: number): string {
+  const fault = check.fault;
+  if (!fault) return `all ${total} targets, right through.`;
+  const said = fault.letter ? `you wrote ${fault.letter}` : '';
+
+  switch (fault.reason) {
+    case 'wrong-target':
+      return `${said}, and from there it had to be ${fault.expected}.`;
+    case 'wrong-sticker':
+      return `${said} — the right piece, but the wrong sticker of it, so it would arrive turned.
+        It had to be ${fault.expected}.`;
+    case 'buffer-sticker':
+      return `${fault.letter} is on the buffer piece itself, which can never be a target.`;
+    case 'already-solved':
+      return `you broke into ${fault.letter}, but that piece was already where it belongs — a new
+        cycle has to start on a piece that is out of place.`;
+    case 'stopped-early':
+      return fault.expected
+        ? `it ran out after ${check.good} targets with pieces still out of place. ${fault.expected}
+          should have come next.`
+        : `it ran out after ${check.good} targets with pieces still out of place — there was
+          another cycle to break into.`;
+    case 'kept-going':
+      return `everything was already solved after ${check.good} targets, so ${fault.letter} is one
+        too many.`;
+  }
+}
+
+/** The memo as typed, with the first wrong target picked out and the rest greyed. */
+function typedHtml(letters: Letter[], check: MemoCheck): string {
+  if (!letters.length) return '<span class="memo-empty">nothing typed</span>';
+  return letters
+    .map((letter, index) => {
+      const state = check.ok || index < check.good ? 'ok' : index === check.good ? 'wrong' : 'after';
+      return `<span class="t ${state}${index % 2 ? ' pair-end' : ''}">${letter}</span>`;
+    })
+    .join('');
+}
+
+/** The short form, beside the memo. A memo that simply stops has no wrong target to point at. */
+function verdictFor(check: MemoCheck): string {
+  if (check.ok) return 'right';
+  if (check.fault?.reason === 'stopped-early') return 'stops short';
+  if (check.fault?.reason === 'kept-going') return 'runs on';
+  return `wrong at target ${check.fault?.at}`;
+}
+
+function halfHtml(name: string, letters: Letter[], check: MemoCheck): string {
+  return `
+    <div class="memo-half">
+      <span class="key">${name}</span>
+      <span class="memo-typed">${typedHtml(letters, check)}</span>
+      <span class="memo-verdict ${check.ok ? 'good' : 'bad'}">${verdictFor(check)}</span>
+      <p class="memo-why">${faultInWords(check, letters.length)}</p>
+    </div>`;
+}
+
+/**
+ * What went wrong, at a glance, down the history. Attempts recorded before the two halves were
+ * told apart know only that something was wrong, so they still say just that.
+ */
+function verdictOf(attempt: TracingAttempt): string {
+  if (attempt.correct) return 'right';
+  if (attempt.edgesOk === false && attempt.cornersOk === false) return 'both';
+  if (attempt.edgesOk === false) return 'edges';
+  if (attempt.cornersOk === false) return 'corners';
+  return 'wrong';
+}

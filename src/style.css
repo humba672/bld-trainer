@@ -1329,3 +1329,63 @@ td.alg {
 .case:hover .case-drill {
   color: var(--accent);
 }
+
+/* ---------------------------------------------------------------- where a memo went wrong */
+
+.memo-half {
+  display: grid;
+  /* The memo takes the width it needs and the verdict sits against it; stretched to the far side
+     of the panel they stop reading as one sentence. */
+  grid-template-columns: 5.5rem auto 1fr;
+  align-items: baseline;
+  gap: 0.2rem 0.9rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.memo-half .key {
+  color: var(--dim);
+  font-size: 0.82rem;
+}
+
+.memo-typed {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+}
+
+/* Right up to the mistake, the mistake itself, then everything the mistake made meaningless. */
+.memo-typed .t.ok {
+  color: var(--text);
+}
+
+.memo-typed .t.wrong {
+  color: var(--bg);
+  background: var(--bad);
+  border-radius: 2px;
+  padding: 0 0.15em;
+}
+
+.memo-typed .t.after {
+  color: var(--line);
+}
+
+.memo-typed .t.pair-end {
+  margin-right: 0.45em;
+}
+
+.memo-empty {
+  color: var(--line);
+}
+
+.memo-verdict {
+  font-size: 0.8rem;
+}
+
+.memo-why {
+  grid-column: 2 / -1;
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--dim);
+  line-height: 1.5;
+}

@@ -25,6 +25,9 @@ export interface TracingAttempt {
   typed: string;
   correct: boolean;
   seconds: number;
+  /** Which half let it down. Missing on attempts recorded before the two were told apart. */
+  edgesOk?: boolean;
+  cornersOk?: boolean;
 }
 
 export interface Progress {
