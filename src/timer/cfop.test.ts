@@ -78,6 +78,15 @@ describe('the 41 F2L cases', () => {
     }
   });
 
+  it('names a pair with a piece stuck in another slot, but it is not one of the 41', () => {
+    // A turn of the cross layer drops the front-right pair's corner into another slot. That is a
+    // real position, and it happens all the time before the other slots are filled, but it is not
+    // one of the cases: there is no setup for it and no algorithm.
+    const key = f2lCaseOf(applyAlg(SOLVED, 'U'), 'FR').key;
+    expect(key).toBeTruthy();
+    expect(cases.has(key)).toBe(false);
+  });
+
   it('reads the same case whichever slot it is in, and whatever the free layer is doing', () => {
     const base = applyAlg(SOLVED, "R' D R");
     const key = f2lCaseOf(base, 'FR').key;

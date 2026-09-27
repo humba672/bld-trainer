@@ -35,6 +35,15 @@ const DRILLABLE = [...CASES.values()].filter((entry) => !entry.solved);
 const SOLUTIONS = solutionData as Record<string, { alg: string; length: number }>;
 const algFor = (key: string): string => SOLUTIONS[key]?.alg ?? '—';
 
+/**
+ * The 41 cases are the ones where the pair is in the free layer or already in its slot. Part way
+ * through a solve a piece is often sitting in one of the other slots instead - most often on your
+ * first pair, before those slots are filled. That is a real position and real time spent, but it
+ * is not one of the 41, there is no setup for it and no algorithm, so it is counted apart rather
+ * than pretending to be a case.
+ */
+const isStandard = (key: string): boolean => CASES.has(key) && !CASES.get(key)!.solved;
+
 /** The cube as this case looks, for the picture. */
 const stateOfCase = (key: string): string => applyAlg(SOLVED, CASES.get(key)?.setup ?? '');
 
@@ -80,6 +89,7 @@ export function mountF2L(container: HTMLElement): () => void {
         yours, times how often it turns up. Nothing is ranked under ${ENOUGH_SAMPLES} reps, because
         one fumble would put it top.
       </p>
+      <p id="case-other" class="hint"></p>
       <div class="table-wrap"><table>
         <thead><tr>
           <th></th><th>Solution</th><th>Cost / solve</th><th>Execution</th><th>Best</th>
@@ -261,10 +271,16 @@ export function mountF2L(container: HTMLElement): () => void {
     ]);
 
     // The table
-    el('case-count').textContent = `${stats.length} seen of ${DRILLABLE.length}`;
+    const standard = stats.filter((stat) => isStandard(stat.caseKey));
+    const other = stats.filter((stat) => !isStandard(stat.caseKey));
+    const otherReps = other.reduce((sum, stat) => sum + stat.samples, 0);
+    el('case-count').textContent = `${standard.length} seen of ${DRILLABLE.length}`;
+    el('case-other').textContent = otherReps
+      ? `${otherReps} more pair${otherReps === 1 ? '' : 's'} had a piece stuck in another slot. Real time, but not one of the 41 and nothing to drill, so they are left out of the table.`
+      : '';
     const body = el('cases');
     body.innerHTML = '';
-    for (const stat of stats) {
+    for (const stat of standard) {
       const row = document.createElement('tr');
       row.innerHTML = `
         <td class="case-cell"></td>
@@ -286,7 +302,7 @@ export function mountF2L(container: HTMLElement): () => void {
       row.querySelector('.row-actions')!.appendChild(drillThis);
       body.appendChild(row);
     }
-    if (!stats.length) {
+    if (!standard.length) {
       body.innerHTML =
         '<tr><td colspan="9" class="hint">Nothing yet. Do some solves, or drill a few cases.</td></tr>';
     }

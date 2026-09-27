@@ -753,16 +753,37 @@ label.inline {
   padding: 0.5rem 0 1.25rem;
 }
 
+/*
+ * The picture is taken out of the flow and the middle padded to match, so the clock lands in the
+ * centre of the window rather than in what is left over beside the picture.
+ */
 .drill-case {
-  display: grid;
-  grid-template-columns: 150px 1fr;
-  gap: 2.5rem;
-  align-items: center;
+  position: relative;
+}
+
+#case-picture {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 150px;
 }
 
 .drill-what {
   text-align: center;
   min-width: 0;
+  padding: 0 190px;
+}
+
+@media (max-width: 900px) {
+  #case-picture {
+    position: static;
+    width: 150px;
+    margin: 0 auto 1rem;
+  }
+
+  .drill-what {
+    padding: 0;
+  }
 }
 
 .drill-what .scramble {
