@@ -134,6 +134,18 @@ export function checkMemo(scrambled: string, typed: Letter[], kind: Kind): MemoC
   return { ok: true, good: typed.length, fault: null };
 }
 
+/**
+ * What is wrong with a memo that is still being typed.
+ *
+ * The same walk, but a half-written memo is not a mistake - it is a memo you have not finished.
+ * Everything else is worth saying the moment it is typed, because a tracer who is told at once can
+ * put it right while they still remember what they were looking at.
+ */
+export function faultSoFar(scrambled: string, typed: Letter[], kind: Kind): MemoFault | null {
+  const { fault } = checkMemo(scrambled, typed, kind);
+  return fault && fault.reason !== 'stopped-early' ? fault : null;
+}
+
 /** How many tracing attempts in a row have been right, counting back from the most recent. */
 export function runningStreak(attempts: TracingAttempt[]): number {
   let streak = 0;

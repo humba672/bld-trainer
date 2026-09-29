@@ -6,7 +6,16 @@
 import { SOLVED, applyAlg } from '../cube/cube';
 import { memoFor, pairsOf } from '../bld/op';
 import type { Letter } from '../bld/speffz';
-import { checkMemo, lettersIn, memoIsValid, runningStreak, type MemoCheck } from '../bld/drills';
+import {
+  checkMemo,
+  faultSoFar,
+  lettersIn,
+  memoIsValid,
+  runningStreak,
+  type MemoCheck,
+  type MemoFault,
+} from '../bld/drills';
+import { Cube3D } from '../ui/cube3d';
 import { randomScramble } from '../cube/scramble';
 import { type ScrambleProgress } from '../timer/scramble-progress';
 import { ScrambleTracker } from '../timer/scramble-tracker';
@@ -27,9 +36,11 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     <section class="panel">
       <h2>Scramble</h2>
       <p id="scramble" class="scramble">…</p>
-      <p id="scramble-kind" class="hint"></p>
-      <div id="apply-state" class="apply-state"></div>
-      <div class="controls">
+      <div class="trace-cube">
+        <p id="scramble-kind" class="hint"></p>
+        <div id="cube" class="cube-stage"></div>
+        <p class="hint">Drag the cube to look round it.</p>
+        <div id="apply-state" class="apply-state"></div>
         <button id="skip-cube">Applied it without the cube</button>
       </div>
     </section>
@@ -42,8 +53,10 @@ export function mountTracingDrill(container: HTMLElement): () => void {
       </p>
       <label for="edges-in">Edges</label>
       <input id="edges-in" autocomplete="off" spellcheck="false" />
+      <p id="edges-live" class="live"></p>
       <label for="corners-in">Corners</label>
       <input id="corners-in" autocomplete="off" spellcheck="false" />
+      <p id="corners-live" class="live"></p>
       <div class="controls">
         <button id="check" class="primary">Check my memo</button>
         <span id="timer" class="hint"></span>
@@ -62,6 +75,8 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     </section>`;
 
   const el = <T extends HTMLElement>(id: string) => container.querySelector<T>(`#${id}`)!;
+
+  const cube = new Cube3D(el('cube'), { size: 172 });
 
   let stage: Stage = 'scrambling';
   let scramble = '';
@@ -97,10 +112,16 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     el<HTMLInputElement>('edges-in').value = '';
     el<HTMLInputElement>('corners-in').value = '';
     el<HTMLInputElement>('edges-in').focus();
+    liveCheck('edge');
+    liveCheck('corner');
     render();
   }
 
   function render(): void {
+    // While the scramble is going on, the cube shows what is really in your hands; after that it
+    // holds the state you are tracing, so it stays there to look at while you type.
+    cube.paint(stage === 'applying' && isConnected() ? tracker.cubeFacelets() : scrambled);
+
     const box = el('apply-state');
     if (stage === 'scrambling') {
       box.innerHTML = '<span class="hint">…</span>';
@@ -180,6 +201,30 @@ export function mountTracingDrill(container: HTMLElement): () => void {
     render();
   }
 
+  /**
+   * Checked on every keystroke. A memo you have not finished is not a mistake, so nothing is said
+   * until a letter is typed that cannot be followed - and then it is said at once, while you can
+   * still see what you were looking at. What it should have been is kept back for the check: being
+   * told the answer for each wrong letter would turn tracing into guessing.
+   */
+  function liveCheck(kind: 'edge' | 'corner'): void {
+    const box = el<HTMLInputElement>(kind === 'edge' ? 'edges-in' : 'corners-in');
+    const say = el(kind === 'edge' ? 'edges-live' : 'corners-live');
+    const letters = lettersIn(box.value);
+    const fault = stage === 'tracing' ? faultSoFar(scrambled, letters, kind) : null;
+
+    box.classList.toggle('wrong', fault !== null);
+    say.className = `live ${fault ? 'bad' : 'good'}`;
+    say.textContent = fault
+      ? liveWords(fault)
+      : letters.length
+        ? `${letters.length} target${letters.length === 1 ? '' : 's'}, still good`
+        : '';
+  }
+
+  el('edges-in').addEventListener('input', () => liveCheck('edge'));
+  el('corners-in').addEventListener('input', () => liveCheck('corner'));
+
   el('new').addEventListener('click', () => void newScramble());
   el('check').addEventListener('click', () => void check());
   el('skip-cube').addEventListener('click', () => {
@@ -199,6 +244,7 @@ export function mountTracingDrill(container: HTMLElement): () => void {
 
   return () => {
     stop();
+    cube.destroy();
     clearInterval(ticker);
   };
 }
@@ -274,4 +320,23 @@ function verdictOf(attempt: TracingAttempt): string {
   if (attempt.edgesOk === false) return 'edges';
   if (attempt.cornersOk === false) return 'corners';
   return 'wrong';
+}
+
+/**
+ * What to say the instant a target goes wrong. It names the mistake but not the answer: knowing
+ * which letter it should have been is the whole exercise, and the check at the end tells you.
+ */
+function liveWords(fault: MemoFault): string {
+  switch (fault.reason) {
+    case 'wrong-sticker':
+      return `Target ${fault.at} is the right piece, but the wrong sticker of it.`;
+    case 'buffer-sticker':
+      return `Target ${fault.at} is on the buffer piece, which is never a target.`;
+    case 'already-solved':
+      return `Target ${fault.at} is a piece that is already where it belongs.`;
+    case 'kept-going':
+      return `Everything was solved after ${fault.at - 1} targets — target ${fault.at} is one too many.`;
+    default:
+      return `Target ${fault.at} cannot follow from there.`;
+  }
 }

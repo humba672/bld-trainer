@@ -8,7 +8,7 @@ import {
   edgePieceOf,
   type Letter,
 } from './speffz';
-import { checkMemo, memoIsValid } from './drills';
+import { checkMemo, faultSoFar, memoIsValid } from './drills';
 
 /**
  * Saying "that memo does not solve it" is true and useless. What a tracer needs is where it went
@@ -180,3 +180,29 @@ function scrambleFrom(seed: number): string {
   }
   return out.join(' ');
 }
+
+describe('checking as you type', () => {
+  it('holds its tongue while the memo is merely unfinished', () => {
+    for (let upto = 0; upto <= mine.edges.length; upto++) {
+      expect(faultSoFar(scrambled, mine.edges.slice(0, upto), 'edge'), `first ${upto}`).toBeNull();
+    }
+  });
+
+  it('speaks up on the letter that breaks it, not the one after', () => {
+    const typed = [...mine.edges.slice(0, 4)];
+    typed[3] = typed[3] === 'C' ? 'D' : 'C';
+    const fault = faultSoFar(scrambled, typed, 'edge');
+    expect(fault?.at).toBe(4);
+    expect(fault?.expected).toBe(mine.edges[3]);
+  });
+
+  it('stays quiet once the memo is complete, and complains if you carry on', () => {
+    expect(faultSoFar(scrambled, mine.corners, 'corner')).toBeNull();
+    expect(faultSoFar(scrambled, [...mine.corners, 'J'], 'corner')?.reason).toBe('kept-going');
+  });
+
+  it('says nothing about an empty box', () => {
+    expect(faultSoFar(scrambled, [], 'edge')).toBeNull();
+    expect(faultSoFar(scrambled, [], 'corner')).toBeNull();
+  });
+});
