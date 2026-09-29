@@ -1106,18 +1106,20 @@ td.alg {
 
 /* ---------------------------------------------------------------- the cube as a solid */
 
-/* Perspective makes the cube draw bigger than its box, so the padding is the room it needs rather
-   than decoration: without it the near corner lands on top of whatever comes next. */
+/* The room a turned cube needs is reserved by the cube itself, in proportion to its size. */
 .cube-stage {
   display: flex;
   justify-content: center;
-  padding: 1.6rem 0 2.6rem;
 }
 
 .cube3d {
   position: relative;
-  /* The drag is the control, so the browser must not take the gesture for a scroll. */
+  /* The drag is the control, so the browser must not take the gesture for a scroll, a text
+     selection, or a drag of the picture - each of which cancels the pointer part way through. */
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
 .cube3d.turnable {
@@ -1388,4 +1390,37 @@ td.alg {
   font-size: 0.8rem;
   color: var(--dim);
   line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------- typing a memo */
+
+/* The cube is the thing being looked at, so everything about it lines up under it rather than
+   trailing off to the left of a full-width panel. */
+.trace-cube {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.trace-cube button {
+  margin-top: 0.5rem;
+}
+
+.live {
+  min-height: 1.1rem;
+  margin: 0.25rem 0 0.7rem;
+  font-size: 0.78rem;
+}
+
+.live.good {
+  color: var(--dim);
+}
+
+.live.bad {
+  color: var(--bad);
+}
+
+input.wrong {
+  border-color: var(--bad);
 }

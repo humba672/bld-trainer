@@ -76,6 +76,26 @@ export function viewFor(facelet: number): View {
 
 export const DEFAULT_VIEW: View = { yaw: -25, pitch: -18 };
 
+/** How far the cube turns per pixel dragged: a shove rather than a flick. */
+const DRAG_SPEED = 0.6;
+
+/** Past this the cube reads as upside down and you lose track of which face is which. */
+const MAX_PITCH = 85;
+
+/** Yaw kept within half a turn either way, so a later snap takes the short way round. */
+const wrapYaw = (degrees: number): number => {
+  const turned = ((degrees + 180) % 360 + 360) % 360;
+  return turned - 180;
+};
+
+/** Where a drag of this many pixels leaves the view. */
+export function draggedTo(view: View, dx: number, dy: number): View {
+  return {
+    yaw: wrapYaw(view.yaw + dx * DRAG_SPEED),
+    pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, view.pitch - dy * DRAG_SPEED)),
+  };
+}
+
 // ---------------------------------------------------------------- the thing on screen
 
 /** Each face turned out from the middle, then pushed out to the surface. */
@@ -106,6 +126,8 @@ export class Cube3D {
   private readonly stickers: HTMLElement[] = [];
   private view: View = { ...DEFAULT_VIEW };
   private dragging = false;
+  /** A view asked for while you had hold of the cube, to be taken up when you let go. */
+  private pending: View | null = null;
   private readonly cleanup: Array<() => void> = [];
 
   constructor(container: HTMLElement, options: Cube3DOptions = {}) {
@@ -117,6 +139,11 @@ export class Cube3D {
     stage.style.width = `${size}px`;
     stage.style.height = `${size}px`;
     stage.style.perspective = `${size * 4}px`;
+    // Perspective draws the cube bigger than its box, and tipping it right over makes it a diamond
+    // half as tall again. The margin reserves that room in the layout, so a turned cube never lands
+    // on the writing above or below it - and it scales with the cube rather than being guessed at
+    // in the stylesheet for one screen's size.
+    stage.style.margin = `${Math.round(size * 0.34)}px auto`;
 
     this.cube = document.createElement('div');
     this.cube.className = 'cube3d-cube';
@@ -157,12 +184,23 @@ export class Cube3D {
 
   /** Turn to where that sticker can be seen, smoothly. */
   lookAt(facelet: number): void {
-    this.view = viewFor(facelet);
-    this.apply(true);
+    this.turnTo(viewFor(facelet));
   }
 
   reset(): void {
-    this.view = { ...DEFAULT_VIEW };
+    this.turnTo({ ...DEFAULT_VIEW });
+  }
+
+  /**
+   * Take up a view - unless the cube is in your hand, in which case it waits until you let go.
+   * Snatching it away mid-drag is the surest way to make dragging feel broken.
+   */
+  private turnTo(view: View): void {
+    if (this.dragging) {
+      this.pending = view;
+      return;
+    }
+    this.view = view;
     this.apply(true);
   }
 
@@ -181,35 +219,69 @@ export class Cube3D {
     let lastY = 0;
 
     const down = (event: PointerEvent) => {
+      if (event.button > 0) return;
+      // Without this the browser takes the gesture for a text selection or a drag of the page,
+      // and hands back a pointercancel part way through - which is what makes a drag give up for
+      // no visible reason.
+      event.preventDefault();
       this.dragging = true;
       lastX = event.clientX;
       lastY = event.clientY;
-      stage.setPointerCapture(event.pointerId);
+      // Capture keeps the moves coming when the pointer leaves the cube. It can refuse - a stale
+      // pointer id, a gesture already taken - and that is survivable, because the window is
+      // listening too.
+      try {
+        stage.setPointerCapture(event.pointerId);
+      } catch {
+        /* the window listeners below cover it */
+      }
     };
+
     const move = (event: PointerEvent) => {
       if (!this.dragging) return;
-      this.view = {
-        yaw: this.view.yaw + (event.clientX - lastX) * 0.6,
-        // Tipped past vertical the cube reads as upside down, so it stops short of that.
-        pitch: Math.max(-85, Math.min(85, this.view.pitch - (event.clientY - lastY) * 0.6)),
-      };
+      // No button held means the release happened somewhere we never heard about: out of the
+      // window, or another gesture took it. Carrying on would leave the cube following a pointer
+      // that is not holding it.
+      if (event.pointerType === 'mouse' && event.buttons === 0) {
+        this.endDrag();
+        return;
+      }
+      this.view = draggedTo(this.view, event.clientX - lastX, event.clientY - lastY);
       lastX = event.clientX;
       lastY = event.clientY;
       this.apply(false);
     };
-    const up = () => {
-      this.dragging = false;
-    };
+
+    const up = () => this.endDrag();
 
     stage.addEventListener('pointerdown', down);
     stage.addEventListener('pointermove', move);
     stage.addEventListener('pointerup', up);
     stage.addEventListener('pointercancel', up);
+    // Backstops: a release the cube never sees still has to end the drag.
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    window.addEventListener('blur', up);
+
     this.cleanup.push(() => {
       stage.removeEventListener('pointerdown', down);
       stage.removeEventListener('pointermove', move);
       stage.removeEventListener('pointerup', up);
       stage.removeEventListener('pointercancel', up);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      window.removeEventListener('blur', up);
     });
+  }
+
+  private endDrag(): void {
+    if (!this.dragging) return;
+    this.dragging = false;
+    if (this.pending) {
+      const wanted = this.pending;
+      this.pending = null;
+      this.view = wanted;
+      this.apply(true);
+    }
   }
 }
